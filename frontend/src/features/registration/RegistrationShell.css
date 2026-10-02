@@ -1,0 +1,166 @@
+/*
+ * The registration flows, on the green field with the form in a white card — the same two
+ * shapes as the sign-in screen (styles/brand.css), so somebody who registers and then
+ * signs in is looking at one product rather than two.
+ */
+
+.reg {
+  min-height: calc(100vh - var(--header-height));
+  padding: var(--space-8) var(--space-6) var(--space-12);
+}
+
+.reg__inner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.reg__back {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  /* Colour and hover come from `.brand-field__link` (styles/brand.css). */
+}
+
+.reg__title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-2xl);
+  color: var(--color-sidebar-text-strong);
+}
+
+.reg__lead {
+  margin-bottom: var(--space-8);
+  color: var(--color-sidebar-text);
+}
+
+/* The surface is `.brand-card`; the padding is the only thing left to say. */
+.reg__card {
+  padding: var(--space-8);
+}
+
+/*
+ * "Already have an account?" under the form. On the green, centred, and far enough from
+ * the card's own submit button that nobody reaches for it by mistake.
+ */
+.reg__signin {
+  margin: var(--space-6) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-sidebar-text);
+  text-align: center;
+}
+
+.reg__step-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.reg__step-lead {
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.reg__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.reg__actions--end {
+  justify-content: flex-end;
+}
+
+.reg__fieldset {
+  padding: 0;
+  margin: 0 0 var(--space-6);
+  border: none;
+}
+
+.reg__legend {
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.reg__grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-4);
+}
+
+.reg__signatory {
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.reg__signatory-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.reg__note {
+  padding: var(--space-4);
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  background-color: var(--color-surface-sunken);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+/* Development-only panel listing the inputs that force each server state. */
+.reg__triggers {
+  padding: var(--space-4);
+  margin-top: var(--space-6);
+  font-size: var(--text-xs);
+  background-color: var(--color-warning-subtle);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}
+
+.reg__triggers dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+}
+
+.reg__triggers dt {
+  font-family: var(--font-mono);
+}
+
+.reg__triggers dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+@media (width <= 620px) {
+  .reg {
+    padding: var(--space-6) var(--space-4) var(--space-8);
+  }
+
+  .reg__inner {
+    max-width: none;
+  }
+
+  .reg__card {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .reg__grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reg__actions .ui-btn {
+    width: 100%;
+  }
+}

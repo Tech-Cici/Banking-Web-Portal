@@ -1,0 +1,106 @@
+/*
+ * Profile, security, notifications and help.
+ *
+ * Two columns where the panels are independent, one where they are not. Capped width
+ * throughout: these are reading screens, and a line of text the full width of a desktop
+ * monitor is a line nobody finishes.
+ */
+
+.account__page {
+  max-width: 76rem;
+}
+
+.account__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(26rem, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (width <= 620px) {
+  .account__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account__permissions {
+  padding-left: var(--space-6);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.account__permissions li {
+  margin-bottom: var(--space-1);
+}
+
+/* ---------------------------------------------------------------- notifications */
+
+.account__notifications {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.account__notification {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.account__notification--unread {
+  border-left: 3px solid var(--color-primary);
+}
+
+/* ---------------------------------------------------------------- faq */
+
+.account__faq {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.account__faq li {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.account__faq li:last-child {
+  border-bottom: none;
+}
+
+.account__faq-q {
+  width: 100%;
+  padding: var(--space-3) 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.account__faq-a {
+  padding-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The heading that separates money from messages on the notifications page.
+ *
+ * The page carries two different kinds of thing — what the accounts did, and what the
+ * bank chose to say — and without a break between them a security alert reads as one
+ * more line in a list of payments.
+ */
+.account__section {
+  margin: var(--space-6, 2rem) 0 var(--space-3, 0.75rem);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text);
+}

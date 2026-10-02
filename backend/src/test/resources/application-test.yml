@@ -1,0 +1,60 @@
+# Test profile: in-memory database, no migrations, quiet logs.
+spring:
+  datasource:
+    url: jdbc:h2:mem:ibanking-test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  flyway:
+    # Tests run the REAL migration against H2 in PostgreSQL mode, rather than letting
+    # Hibernate invent a schema. A migration that only ever runs in production is a
+    # migration nobody has tested.
+    enabled: true
+
+  # THE JDBC SESSION STORE IS OFF HERE, AND THAT IS A TRADE WORTH READING.
+  #
+  # Production keeps sessions in the database (V21), so a restart or a deploy no longer
+  # signs every customer out. Spring Session carries session identity in a cookie named
+  # SESSION and its filter owns `getSession()` entirely — so a MockMvc request handed a
+  # `MockHttpSession` is no longer the same caller, because the object is not where the
+  # identity lives any more.
+  #
+  # This suite threads a MockHttpSession through 165 call sites in 17 files to mean "the
+  # same signed-in person". Switching the store on turned all 165 into 401s at once.
+  # Rewriting them to propagate a cookie would touch every integration test in the project
+  # and would quietly change what they test: each would start exercising cookie plumbing as
+  # well as the rule it was written for, and a failure would no longer say which.
+  #
+  # WHAT THE EXCLUSION COSTS: these tests run with container sessions rather than the
+  # production store. That is exactly what they did before V21 — this suite has never
+  # exercised session persistence, because a MockHttpSession never persisted anywhere.
+  #
+  # WHAT COVERS THE GAP: SessionsAreInTheDatabaseTest clears this exclusion and asserts
+  # that signing in writes a row to SPRING_SESSION. That catches the failure mode this
+  # change actually has — being configured into a silent no-op, with the library on the
+  # classpath, nothing wiring it, an application that starts cleanly, and sessions still in
+  # Tomcat's memory. The restart itself was verified through a browser: sign in, kill the
+  # API, start a fresh JVM against the same database, reload — the page stayed put and
+  # /session answered 200.
+  autoconfigure:
+    exclude: org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration
+
+ibanking:
+  sign-in:
+    # ON FOR THE TESTS, even though it ships off.
+    #
+    # The emailed-code path and the remembered-browser path are both still real code and
+    # both still have to work — turning the flag off in production must not quietly stop
+    # them being exercised. The one test that covers the OFF case sets the property for
+    # itself, so both paths are covered and neither depends on whatever the default
+    # happens to be this month.
+    code-required: true
+
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+
+logging:
+  level:
+    root: WARN
+    rw.bank.ibanking: INFO

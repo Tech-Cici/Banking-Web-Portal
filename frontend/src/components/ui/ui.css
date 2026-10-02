@@ -1,0 +1,749 @@
+/*
+ * Design-system primitives.
+ *
+ * This is the start of the Phase 2 design system, pulled forward because the registration
+ * forms need it. Phase 2 extends these components rather than replacing them, so nothing
+ * written here is throwaway.
+ *
+ * Every control supports the state set the blueprint requires (section 20.1): default,
+ * focused, filled, disabled, read-only, validation error, server error, loading, and
+ * success where it applies.
+ */
+
+/* ============================ Button ============================ */
+
+.ui-btn {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* comfortable touch target */
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  transition:
+    background-color var(--duration-fast) var(--easing),
+    border-color var(--duration-fast) var(--easing);
+}
+
+.ui-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-btn--primary {
+  color: var(--color-text-inverse);
+  background-color: var(--color-primary);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.ui-btn--secondary {
+  color: var(--color-primary);
+  background-color: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+
+.ui-btn--secondary:hover:not(:disabled) {
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+.ui-btn--tertiary {
+  min-height: auto;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-primary);
+  background-color: transparent;
+}
+
+.ui-btn--tertiary:hover:not(:disabled) {
+  background-color: var(--color-primary-subtle);
+}
+
+.ui-btn--danger {
+  color: var(--color-text-inverse);
+  background-color: var(--color-error);
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+/* Spinner. Hidden from assistive tech — the button's aria-busy and the status region
+   carry the meaning. */
+.ui-btn__spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ui-spin 700ms linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn__spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* ============================ Field shell ============================ */
+
+.ui-field {
+  display: block;
+  /* Scale is 4/8/12/16/24/32/48 (blueprint 2.1) — no 20px step, so 24 it is. */
+  margin-bottom: var(--space-6);
+}
+
+.ui-field__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+/* Required is marked in words as well as with an asterisk: a lone "*" is not
+   self-explanatory, and colour/symbol alone fails WCAG. */
+.ui-field__optional {
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+}
+
+.ui-field__hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ui-field__error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-error);
+}
+
+/* ============================ Inputs ============================ */
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.ui-textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.ui-input::placeholder,
+.ui-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.ui-input:disabled,
+.ui-select:disabled,
+.ui-textarea:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  background-color: var(--color-surface-sunken);
+}
+
+.ui-input[readonly] {
+  background-color: var(--color-surface-sunken);
+}
+
+/* Error state uses a thicker border plus the message below, never colour alone. */
+.ui-input--invalid,
+.ui-select--invalid,
+.ui-textarea--invalid {
+  border-color: var(--color-error);
+  border-width: 2px;
+}
+
+.ui-input--valid {
+  border-color: var(--color-success);
+}
+
+.ui-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ui-input-wrap .ui-input {
+  padding-right: 5.5rem;
+}
+
+.ui-input__adornment {
+  position: absolute;
+  right: var(--space-2);
+}
+
+/* ============================ Checkbox ============================ */
+
+.ui-checkbox {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.ui-checkbox input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: var(--color-primary);
+}
+
+/* ============================ Alert ============================ */
+
+.ui-alert {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+}
+
+.ui-alert__icon {
+  flex: none;
+  font-weight: var(--weight-semibold);
+}
+
+.ui-alert__title {
+  margin-bottom: var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+
+.ui-alert--info {
+  background-color: var(--color-info-subtle);
+  border-left-color: var(--color-info);
+}
+
+.ui-alert--success {
+  background-color: var(--color-success-subtle);
+  border-left-color: var(--color-success);
+}
+
+.ui-alert--warning {
+  background-color: var(--color-warning-subtle);
+  border-left-color: var(--color-warning);
+}
+
+.ui-alert--error {
+  background-color: var(--color-error-subtle);
+  border-left-color: var(--color-error);
+}
+
+/*
+ * What to do next.
+ *
+ * Deliberately not muted. It is the most useful line in the box — dimming it the way a
+ * footnote is dimmed is how "check your Wi-Fi" gets skipped and the customer calls
+ * instead. Separated from the summary by space, not by a smaller size.
+ */
+.ui-alert__next {
+  margin-top: var(--space-2);
+}
+
+.ui-alert__action {
+  margin-top: var(--space-3);
+}
+
+.ui-alert__reference {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ============================ Stepper ============================ */
+
+.ui-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0 0 var(--space-8);
+  list-style: none;
+  counter-reset: ui-step;
+}
+
+.ui-stepper__item {
+  display: flex;
+  /* 96px basis so a five-step flow fits one row in the 720px form column; at 140px the
+     last step wrapped onto a line of its own and read like a separate section. */
+  flex: 1 1 96px;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+  padding-top: var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
+  color: var(--color-text-muted);
+  border-top: 3px solid var(--color-border);
+  counter-increment: ui-step;
+}
+
+@media (width >= 720px) {
+  .ui-stepper__item {
+    font-size: var(--text-sm);
+  }
+}
+
+.ui-stepper__item--current {
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  border-top-color: var(--color-primary);
+}
+
+.ui-stepper__item--done {
+  color: var(--color-success);
+  border-top-color: var(--color-success);
+}
+
+.ui-stepper__marker {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-inverse);
+  background-color: var(--color-border-strong);
+  border-radius: 50%;
+}
+
+.ui-stepper__item--current .ui-stepper__marker {
+  background-color: var(--color-primary);
+}
+
+.ui-stepper__item--done .ui-stepper__marker {
+  background-color: var(--color-success);
+}
+
+/* ============================ OTP ============================ */
+
+/*
+ * A single input, not one box per digit.
+ *
+ * The blueprint calls separated visual digits "optional" (section 2.2), and the split-box
+ * pattern actively hurts: it breaks `autocomplete="one-time-code"` SMS autofill on iOS and
+ * Android, and it presents a screen-reader user with six unlabelled fields instead of one.
+ * A single input with wide letter spacing looks nearly the same and behaves correctly.
+ */
+.ui-otp {
+  width: 100%;
+  max-width: 15rem;
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5em;
+  text-align: center;
+  text-indent: 0.5em; /* offsets the trailing letter-space so digits look centred */
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.ui-otp:disabled {
+  background-color: var(--color-surface-sunken);
+}
+
+.ui-otp--invalid {
+  border-color: var(--color-error);
+  border-width: 2px;
+}
+
+.ui-otp-resend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ============================ File upload ============================ */
+
+.ui-upload {
+  padding: var(--space-6);
+  text-align: center;
+  background-color: var(--color-surface-sunken);
+  border: 2px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.ui-upload--dragging {
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+.ui-upload--invalid {
+  border-color: var(--color-error);
+}
+
+.ui-upload__list {
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  list-style: none;
+}
+
+.ui-upload__item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  text-align: left;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.ui-upload__meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ============================ Review panel ============================ */
+
+.ui-review {
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-6);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.ui-review__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-review__row:last-child {
+  border-bottom: none;
+}
+
+.ui-review__label {
+  color: var(--color-text-muted);
+}
+
+.ui-review__value {
+  font-weight: var(--weight-medium);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+/* ============================ Panel ============================ */
+
+.ui-panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.ui-panel__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.ui-panel__subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.ui-panel__action {
+  font-size: var(--text-sm);
+}
+
+.ui-panel__body {
+  padding: var(--space-4);
+}
+
+/* ============================ Status badge ============================ */
+
+.ui-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.ui-badge--neutral {
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-sunken);
+  border-color: var(--color-border);
+}
+
+.ui-badge--success {
+  color: var(--color-success);
+  background-color: var(--color-success-subtle);
+  border-color: var(--color-success);
+}
+
+.ui-badge--warning {
+  color: var(--color-warning);
+  background-color: var(--color-warning-subtle);
+  border-color: var(--color-warning);
+}
+
+.ui-badge--error {
+  color: var(--color-error);
+  background-color: var(--color-error-subtle);
+  border-color: var(--color-error);
+}
+
+.ui-badge--info {
+  color: var(--color-info);
+  background-color: var(--color-info-subtle);
+  border-color: var(--color-info);
+}
+
+/* ============================ Skeleton ============================ */
+
+.ui-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ui-skeleton__bar {
+  height: 1rem;
+  background-color: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.ui-skeleton__bar:nth-child(even) {
+  width: 70%;
+}
+
+/* ============================ Empty state ============================ */
+
+/*
+ * NOTHING HERE, SAID BRIEFLY.
+ *
+ * This was 2rem of padding and centred text, which on a dashboard produced a tall white
+ * box with one grey sentence floating in the middle of it. A customer with two accounts
+ * and no activity yet met six of those boxes and a page that was mostly emptiness —
+ * "nothing has happened" taking up more room than anything that had.
+ *
+ * Left-aligned, because centred text in a wide panel reads as an error page or a
+ * placeholder rather than as one ordinary line of information. The message sits where the
+ * first row of content would have been, so the panel looks the same height whether it has
+ * one item or none.
+ */
+.ui-empty {
+  padding: 0;
+}
+
+.ui-empty__message {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Any action under the message gets its own line, not a gap above a centred block. */
+.ui-empty > * + * {
+  margin-top: var(--space-3);
+}
+
+/* ============================ Page header ============================ */
+
+.ui-page-head {
+  margin-bottom: var(--space-6);
+}
+
+.ui-page-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ui-page-head__title {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+
+.ui-page-head__lead {
+  max-width: 48rem;
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.ui-crumbs {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.ui-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ui-crumbs li + li::before {
+  margin-right: var(--space-2);
+  color: var(--color-text-muted);
+  content: '›';
+}
+
+/* ============================ Data table ============================ */
+
+.ui-table-wrap {
+  overflow-x: auto;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-table th,
+.ui-table td {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-table th {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ui-table__num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ui-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/*
+ * Row hover, as a LAYER rather than a background colour.
+ *
+ * `background-color` would win over the warning and error tints below — hover
+ * out-specifies a class selector — so the one row on the page that is trying to tell
+ * staff something would lose its colour at the exact moment the pointer reached it. A
+ * background-image composites on top of whatever colour the row already has, so a
+ * tinted row stays tinted and simply darkens like every other.
+ */
+.ui-table tbody tr:hover td {
+  background-image: linear-gradient(rgb(22 25 31 / 4%), rgb(22 25 31 / 4%));
+}
+
+.ui-table__row--warning td {
+  background-color: var(--color-warning-subtle);
+}
+
+.ui-table__row--error td {
+  background-color: var(--color-error-subtle);
+}
+
+@media (width <= 720px) {
+  .ui-table__secondary {
+    display: none;
+  }
+}
+
+/* ============================ Pagination ============================ */
+
+.ui-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+}
+
+.ui-pager__status {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ============================ Money input ============================ */
+
+.ui-money {
+  display: flex;
+  align-items: stretch;
+}
+
+.ui-money__currency {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.ui-money .ui-input {
+  font-variant-numeric: tabular-nums;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}

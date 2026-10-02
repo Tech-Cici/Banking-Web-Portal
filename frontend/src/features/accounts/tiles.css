@@ -1,0 +1,225 @@
+/*
+ * ACCOUNT TILES.
+ *
+ * The reference design's card strip, in the portal's green. Every colour is an existing
+ * token: the reference's lime is not copied in, because a second hard-coded brand colour
+ * is a second one to keep in step with the first.
+ */
+
+.tiles {
+  display: grid;
+  /*
+   * auto-fit with a minimum, not a fixed three columns. The number of accounts a
+   * customer has is not ours to choose — one tile should not be a third of a row, and
+   * five should not overflow.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4, 1rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 0.5rem);
+  /*
+   * THE TILE IS THE YARDSTICK FOR ITS OWN CONTENTS.
+   *
+   * Declared so `.tile__balance` can size itself in `cqi` — a percentage of THIS card's
+   * width. The balance was sized in `vw` before, and a tile's width has almost nothing
+   * to do with the viewport's: the menu takes a fixed 260px, the panel takes its
+   * padding, and the number of cards in the row jumps whenever another 15rem column
+   * fits. A wider window can therefore produce a NARROWER card, which is what the `vw`
+   * version could not see and why the figure overflowed at 1360px while 1600px and
+   * 1200px were both clean.
+   */
+  container-type: inline-size;
+  /* A card's proportions, so the row reads as cards rather than as boxes of text. */
+  min-height: 9.5rem;
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+/*
+ * THE FIRST TILE IS FILLED. In the reference this is the selected card; here it is the
+ * customer's oldest account, which is the one they think of as theirs. It carries no
+ * meaning beyond emphasis, so nothing depends on the colour — the name and number are
+ * on every tile either way.
+ */
+.tile--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  border-color: var(--color-primary);
+  /* A lift of 1px, not 4. This is a list of a person's bank accounts, not a game. */
+  transform: translateY(-1px);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tile__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 0.5rem);
+}
+
+.tile__type {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.tile__balance {
+  /*
+   * The figure is the point of the tile, so it gets the space. Tabular figures so a row
+   * of tiles does not jitter between "1,000" and "8,970,000".
+   *
+   * NO overflow-wrap HERE, and that was a real bug rather than a preference. With
+   * `anywhere`, the intrinsic minimum width of this text becomes one character, so the
+   * grid column was free to shrink below the figure — and RWF 11,988,000 rendered as
+   * "RWF 11,988,00" with a lone "0" on the next line. A balance broken across two lines
+   * is a number a customer can misread, which is the one thing a bank page may not do.
+   *
+   * It is allowed to SHRINK instead, measured against the CARD rather than the window.
+   * `cqi` is a percentage of the tile's own content box (see `container-type` above), so
+   * the figure shrinks exactly when the card it lives in is narrow — which `vw` got
+   * wrong, because the row goes from three cards to four as the window widens and each
+   * card gets smaller at the moment the viewport gets bigger.
+   *
+   * 8.5%: the longest figure this service can produce is about 11 times its own
+   * font-size wide, so 100/11 = 9.09% is the point of failure and this sits under it.
+   * Checked at 94 widths from 320px to 2560px, with one to six cards, against balances
+   * up to RWF 1,234,567,890 — not reasoned about, because the reasoned version is the
+   * one that broke.
+   */
+  margin-top: auto;
+  font-size: clamp(0.9375rem, 8.5cqi, 1.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+/*
+ * "Balance not shown" is not a figure and must not look like one: same slot, ordinary
+ * weight, so nobody reads it as an amount.
+ */
+.tile__unknown {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.tile__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.tile__name {
+  font-weight: 600;
+}
+
+.tile__number {
+  opacity: 0.8;
+}
+
+.tile__note {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+/* -------------------------------------------------------------- the held bar */
+
+/*
+ * Money that has left an account and not arrived anywhere, drawn as a bar against the
+ * balance. Modelled on the reference's usage meter, and unlike that meter it measures
+ * something the server actually states — the reference's number was a spending limit,
+ * and this service has no limits to report, so a bar labelled as one would be invented.
+ */
+.held__figure {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.held__label {
+  margin: 0.1rem 0 var(--space-3, 0.75rem);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.held__track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.held__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-warning);
+}
+
+/*
+ * The cleared, spendable share. Green because it is the good part of the bar — the
+ * remainder is the money the customer cannot touch yet, and the track behind it carries
+ * that without needing a second colour.
+ */
+.held__fill--available {
+  background: var(--color-success);
+}
+
+.held__ends {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--space-2, 0.5rem) 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.held__rows {
+  margin: var(--space-3, 0.75rem) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.held__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 30rem) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+}

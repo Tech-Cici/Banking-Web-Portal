@@ -1,0 +1,91 @@
+/*
+ * Money-movement flows.
+ *
+ * Narrow on purpose. A payment form is a task to be completed without distraction, so
+ * the column is capped well short of the page width even on a large screen — the same
+ * reason a teller's counter has one queue and not six.
+ */
+
+.money {
+  max-width: 42rem;
+}
+
+.money__form {
+  margin-top: var(--space-6);
+}
+
+.money__blocked {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.money__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-6);
+}
+
+.money__result {
+  margin-top: var(--space-6);
+}
+
+.money__note {
+  margin-top: var(--space-3);
+}
+
+.money__link {
+  font-size: var(--text-sm);
+}
+
+.money__receipt {
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.money__reference {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+}
+
+/* A grid of billers / transfer kinds to choose from. */
+.money__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.money__choice {
+  display: block;
+  height: 100%;
+  padding: var(--space-4);
+  color: inherit;
+  text-decoration: none;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.money__choice:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.money__choice-title {
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+.money__choice-note {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Keep the portal out of search engines and out of referrer headers. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+
+    <!-- Declaring an icon also stops the browser probing /favicon.ico and logging a 404.
+         Placeholder asset pending the bank's branding (blueprint section 29). -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="theme-color" content="#0a5a2e" />
+
+    <!--
+      Content-Security-Policy is delivered by the hosting gateway as a response header,
+      not from here: a meta CSP cannot use report-only or frame-ancestors, and a header
+      cannot be stripped by injected markup. See docs/SECURITY.md.
+    -->
+
+    <title>Zigama CSS Internet Banking</title>
+    <meta name="description" content="Secure internet banking portal." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      Zigama CSS Internet Banking requires JavaScript. Please enable it, or contact the bank
+      for assistance.
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

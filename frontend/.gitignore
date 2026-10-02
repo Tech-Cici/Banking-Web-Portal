@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+.env
+.env.local
+.env.*.local
+.vite
+.DS_Store
+*.log
+npm-debug.log*
+
+# Screenshots from scripts/verify (see scripts/verify/README.md).
+walk-output

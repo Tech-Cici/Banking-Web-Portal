@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+coverage/
+.vite/
+
+# Java
+target/
+*.class
+
+# Environment — never commit a populated env file
+.env
+.env.local
+.env.*.local
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Working folders that are not part of the project.
+#
+# "Claude outputs" holds 13MB of verification screenshots and packaged batches — useful
+# locally, noise in a repository. "_to_delete" holds checksum scratch files.
+Claude outputs/
+_to_delete/
+
+# Verification screenshots (see frontend/scripts/verify/README.md).
+walk-output/

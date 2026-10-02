@@ -1,0 +1,111 @@
+# Local PostgreSQL for development.
+#
+#   docker compose up -d db
+#   cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+#
+# To BROWSE the database in a browser instead of psql:
+#
+#   docker compose --profile tools up -d adminer     # then open http://localhost:8081
+#
+# Adminer is behind a Compose profile, so a plain `docker compose up -d` still starts
+# only the database. A GUI that came up whether or not anybody wanted it would be a
+# second container competing for memory on a laptop already running Docker, the API and
+# Vite.
+#
+# The `dev` profile, not `postgres`: the credentials below are `dev`'s defaults, so it
+# needs no environment. The `postgres` profile deliberately refuses to start without
+# DB_PASSWORD supplied, because a deployed environment must never fall back to a
+# password written in a repository.
+#
+# Flyway creates the schema on first start. The `h2` profile is the no-dependency
+# alternative, but its database is in memory and is wiped whenever the API stops, so
+# anything registered on it is gone. See backend/docs/LOCAL-DATABASE.md.
+#
+# These credentials are for a throwaway local container and are not used anywhere else.
+
+# Pinned rather than derived from the directory name.
+#
+# Compose names the project after the containing folder, so "Banking Web Portal" becomes
+# "bankingwebportal" and the volume becomes "bankingwebportal_ibanking-db-data". That
+# works, but it makes the data belong to the folder's NAME: rename or move the checkout
+# and Compose looks for a volume that does not exist, comes up empty, and every
+# registered customer appears to have vanished. Pinning it means the database is tied to
+# this project, not to where it happens to sit on disk.
+name: ibanking
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: ibanking-db
+    environment:
+      POSTGRES_DB: ibanking
+      POSTGRES_USER: ibanking
+      POSTGRES_PASSWORD: ibanking_local_only
+      # Deterministic collation, so ORDER BY behaves the same everywhere.
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      # 5433 on the host, 5432 inside the container.
+      #
+      # Not 5432 on both, because a developer machine very often already has a PostgreSQL
+      # on the standard port from another project — and then this container simply fails
+      # to start with "address already in use". Worse, the obvious workaround is to stop
+      # the other server, which means this project's setup interferes with someone else's
+      # work. Taking a different port costs nothing and this one never collides.
+      #
+      # Override with DB_HOST_PORT if 5433 is taken too. The API's dev profile defaults
+      # to 5433 to match; change both together or neither.
+      #
+      # Bound to loopback only — not reachable from the local network.
+      - '127.0.0.1:${DB_HOST_PORT:-5433}:5432'
+    volumes:
+      # /var/lib/postgresql, NOT /var/lib/postgresql/data. Do not "correct" this.
+      #
+      # PostgreSQL 18 moved PGDATA to /var/lib/postgresql/18/docker and moved the image's
+      # declared VOLUME up to /var/lib/postgresql. Mounting the old /data path is the
+      # documented trap: Docker then also creates an ANONYMOUS volume over
+      # /var/lib/postgresql, the database writes into that, and the named volume below
+      # stays empty. Nothing errors. It looks like it is working — until the container is
+      # recreated, at which point the anonymous volume is orphaned and the data is gone.
+      #
+      # Official guidance: "The defined VOLUME was changed in 18 and above to
+      # /var/lib/postgresql. Mounts and volumes should be targeted at the updated
+      # location." https://github.com/docker-library/docs/blob/master/postgres/README.md
+      - ibanking-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ibanking -d ibanking']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # -------------------------------------------------------------- adminer
+  #
+  # A database GUI, for looking at rows without writing SQL at a terminal.
+  #
+  # ONLY WITH `--profile tools`. It is a development convenience, not part of the
+  # application, and it must never be the thing somebody forgets is running.
+  #
+  # Adminer rather than pgAdmin: it is a single PHP file in a ~90MB image that opens
+  # straight onto a login form, against pgAdmin's ~450MB, its own account to create and
+  # a server to register before you can see a table. For "show me what is in
+  # customer_accounts" the smaller one wins; if you later want query plans and a proper
+  # editor, TablePlus or DataGrip on the Mac is the better tool than either.
+  adminer:
+    image: adminer:5
+    container_name: ibanking-adminer
+    profiles: ['tools']
+    environment:
+      # Pre-fills the Server box with the db container's name on the Compose network.
+      # NOT the credentials: a GUI that logs itself in is a GUI anybody who reaches the
+      # port is logged into, and this one talks to a database holding customer rows.
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: pepa-linha-dark
+    ports:
+      # Loopback only, and 8081 because 8080 is the API's own port (SERVER_PORT) — the
+      # two would fight, and the loser is whichever started second.
+      - '127.0.0.1:${ADMINER_PORT:-8081}:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  ibanking-db-data:

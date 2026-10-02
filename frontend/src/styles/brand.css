@@ -1,0 +1,438 @@
+/*
+ * THE TWO SHAPES THE BANK'S DESIGN IS MADE OF: a green field, and a white card on it.
+ *
+ * The reference design Zigama supplied for the sign-in screen is a gradient field with a
+ * rounded white card floating on it, a pattern in one corner, and pill-shaped controls.
+ * Those shapes are now used by the sign-in screens, the landing page's hero and closing
+ * band, the registration choice page and the three registration forms — so they are
+ * defined ONCE, here, rather than copied into five stylesheets.
+ *
+ * WHY ONE FILE. The gradient is not a free choice: its lightest point determines whether
+ * white text on it passes WCAG AA, and that was measured rather than guessed (see below).
+ * A copy of it in another stylesheet is a copy that gets nudged by somebody who has not
+ * measured, and the failure is invisible — text that is still readable to the person
+ * changing it and not to everyone.
+ *
+ * THIS REVERSES AN EARLIER RULE, which is worth saying plainly rather than leaving as a
+ * contradiction between two files. LandingPage.css used to open with "flat surfaces, one
+ * accent colour, no gradients — a banking site that looks like a startup campaign reads
+ * as less trustworthy". That was a reasonable default and it is no longer ours to keep:
+ * the bank supplied a design with a gradient in it. What survives from that rule is
+ * everything underneath the colour — no invented statistics, no testimonials, no scroll
+ * animation, no claim the bank has not made.
+ */
+
+/* ===================================================================== the field */
+
+.brand-field {
+  position: relative;
+  color: var(--color-sidebar-text);
+
+  /*
+   * THE GRADIENT, and its lightest point is the one worth measuring.
+   *
+   * Dark at the top-right, the mid green at the bottom-left, with a 16% white wash over
+   * that corner. COMPUTED over the composite: the lightest painted point is #43764b,
+   * where white is 5.34:1 and the panel text colour (#eaf2ec) is 4.68:1 — both past the
+   * 4.5:1 WCAG AA asks of body text. The darkest is #184d28 at 9.85:1. So nothing on
+   * this field is ever below 4.68:1.
+   *
+   * 20% puts the panel text at 4.21:1, which fails. So 16% is still a ceiling, not a
+   * taste — and it is a LOWER ceiling than it was, because these greens are lighter than
+   * the ones they replace. The figures here used to read #31744f, 5.61 and 4.92, which
+   * were true of the placeholder palette.
+   *
+   * THE BRAND GREEN IS NOT THE LIGHT END, and this is the one place somebody will try to
+   * put it. #36a148 under a 16% wash composites to #56b065, where the panel text is
+   * 2.36:1 — and the light end of this gradient is the bottom-left corner, which is
+   * exactly where the text panel sits. The lightest green this corner can hold is
+   * #1f5c29. The brand green appears on this field in the decoration instead, which
+   * carries no text and so has no contrast floor to clear.
+   *
+   * The wash is white rather than a lighter green for the reason recorded in tokens.css:
+   * it lifts whatever is behind it by a fixed amount, which is what let this survive the
+   * palette change with one number to re-measure instead of a rebuild.
+   */
+  background-color: var(--color-sidebar);
+  background-image:
+    radial-gradient(140% 120% at 0% 100%, rgb(255 255 255 / 16%) 0%, rgb(255 255 255 / 0%) 70%),
+    linear-gradient(
+      210deg,
+      var(--color-sidebar) 0%,
+      var(--color-sidebar) 28%,
+      var(--color-primary) 100%
+    );
+
+  /*
+   * The decoration is positioned off the corner, so it has to be clipped. Safe on a box
+   * sized by its content or by `min-height` rather than a fixed `height`: the box grows,
+   * the document scrolls, and only the parts of the pattern hanging over the edge are
+   * cut.
+   */
+  overflow: hidden;
+}
+
+/*
+ * A LIGHT FOCUS RING ON THE FIELD, A DARK ONE ON THE CARD.
+ *
+ * `--color-focus` is the darkest green in the palette, chosen to be seen against white.
+ * On this gradient it is green on green: MEASURED at 2.07:1 against the field's own
+ * extremes, under the 3:1 WCAG asks of a focus indicator, and at the dark end simply
+ * invisible. White is 9.85:1 at the field's darkest and 5.34:1 at its lightest.
+ *
+ * The second rule puts it back for anything inside a card, where the surround is white
+ * again and a white ring would be the same bug in reverse. Two rules rather than an
+ * override at each call site, so a control added later cannot be forgotten.
+ */
+.brand-field :focus-visible {
+  outline-color: var(--color-sidebar-text-strong);
+}
+
+.brand-field .brand-card :focus-visible {
+  outline-color: var(--color-focus);
+}
+
+/*
+ * AN ORDINARY LINK SITTING DIRECTLY ON THE FIELD.
+ *
+ * `global.css` turns every link the brand green and darkens it on hover to
+ * `--color-primary-hover`. That is the right behaviour on a white page and the worst
+ * possible one here: --color-primary-hover IS the dark end of this gradient, so a link on
+ * the field DISAPPEARED under the cursor — 1.00:1, the same colour on the same colour.
+ * "← Back to the home page" vanished when hovered, which is the one moment a person needs
+ * to be sure they are about to click it.
+ *
+ * THE COLLISION IS STILL EXACT AFTER THE PALETTE CHANGE, and by construction rather than
+ * by luck: --color-primary-hover and --color-sidebar are both #184d28, as they were both
+ * #07421f before. Re-pointing the tokens at Zigama's own greens did not fix this and was
+ * never going to; the rule below is what fixes it.
+ *
+ * MEASURED: at rest #eaf2ec is 4.68:1 against the field's lightest point and 8.64:1
+ * against its darkest; hovered, white is 5.34:1 and 9.85:1. The underline is kept and
+ * thickened rather than swapped for a colour change, because a hover signalled by colour
+ * alone is no signal to a colourblind reader.
+ *
+ * OPT-IN RATHER THAN A BLANKET `.brand-field a` RULE, and that is deliberate. The
+ * registration choice page puts a pale information panel ON the field; a blanket rule
+ * would turn the links inside it near-white on near-white, which is the same bug facing
+ * the other way. A link that sits on the green says so.
+ */
+.brand-field__link {
+  color: var(--color-sidebar-text);
+}
+
+.brand-field__link:hover,
+.brand-field__link:focus-visible {
+  color: var(--color-sidebar-text-strong);
+  text-decoration-thickness: 2px;
+}
+
+/* --------------------------------------------------------------- the decoration */
+
+/*
+ * Drawn in CSS rather than shipped as an image: three elements, no network request.
+ *
+ * IT IS THE BRAND GREEN, and this is the one place on the field where that is allowed.
+ * The arc, the spot and the dot grid carry no text and convey nothing — WCAG puts no
+ * contrast floor on a purely decorative graphic — so #36a148 can appear here at full
+ * strength while every text surface on the same field stays on the darker greens that
+ * can carry a label. It is 2.98:1 against the field's dark end, which is to say clearly
+ * visible and nowhere near enough to be load-bearing.
+ *
+ * This is what stops the palette change being invisible. Point the tokens at Zigama's
+ * greens and the product gets the right HUE; put the actual logo green in the decoration
+ * and the public pages get the logo's colour, in the corner the reference design put a
+ * pattern in.
+ *
+ * Set here on the container and inherited through `currentcolor` by all three children,
+ * so there is one value to change and no chance of the three drifting apart.
+ *
+ * Decorative and nothing else, so the markup hides it from assistive technology and it
+ * takes no pointer events — an invisible rectangle over the corner of a sign-in page is
+ * the kind of thing that swallows a click on the wordmark.
+ */
+.brand-field__decor {
+  position: absolute;
+  inset: 0;
+  color: var(--color-brand);
+  pointer-events: none;
+}
+
+/* A dashed ring, mostly off-screen, so only the sweep across the corner shows. */
+.brand-field__arc {
+  position: absolute;
+  top: -13rem;
+  left: -13rem;
+  width: 24rem;
+  height: 24rem;
+  border: 2px dashed currentcolor;
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+.brand-field__spot {
+  position: absolute;
+  top: 1.8rem;
+  left: 1.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: currentcolor;
+  border-radius: 50%;
+  opacity: 0.85;
+}
+
+/*
+ * The dot grid, below the arc rather than under it — the two overlapping read as one
+ * smudge. A repeating radial gradient, so it is one element and no image file.
+ */
+.brand-field__dots {
+  position: absolute;
+  top: 5.5rem;
+  left: 2.4rem;
+  width: 5.5rem;
+  height: 4.2rem;
+  background-image: radial-gradient(currentcolor 1.3px, transparent 1.4px);
+  background-size: 11px 11px;
+  opacity: 0.45;
+}
+
+/* The pattern is for a wide screen; on a phone it crowds whatever sits on the field. */
+@media (width < 900px) {
+  .brand-field__decor {
+    display: none;
+  }
+}
+
+/* ============================================================== text on the field */
+
+.brand-field__eyebrow {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-base);
+  font-weight: var(--weight-regular);
+  color: var(--color-sidebar-text);
+  /*
+   * NO OPACITY HERE, and it was there until it was measured. Fading this line to 90%
+   * blends it towards whatever is behind it, which over the light end of the gradient
+   * took it to 4.32:1 — under AA. Quietness comes from the size and weight instead,
+   * which costs nothing.
+   */
+}
+
+.brand-field__headline {
+  margin: 0;
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-sidebar-text-strong);
+  /* Balanced so a three-line headline does not leave one word on the last line. */
+  text-wrap: balance;
+}
+
+.brand-field__lead {
+  max-width: 48ch;
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-lg);
+  color: var(--color-sidebar-text);
+}
+
+/*
+ * A PILL BUTTON ON THE FIELD: solid, with a white edge.
+ *
+ * Not the translucent white the sidebar's selected row uses, and the difference is
+ * measured rather than aesthetic. A translucent fill takes its colour from whatever is
+ * behind it, and behind this is a gradient: at 12% white over the light end the white
+ * label came to 4.35:1 and on hover 3.17:1, both under AA. A fixed dark fill is 9.85:1
+ * wherever the pill happens to sit.
+ *
+ * The 1px white border is what makes it visible as a shape. The fill is the same colour
+ * as the darkest part of the field, so in that corner the fill alone would be 1.00:1 —
+ * the border is 5.34:1 at the field's lightest and 9.85:1 at its darkest, so it carries
+ * the outline on its own.
+ */
+.brand-field__action {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--color-sidebar-text-strong);
+  text-decoration: none;
+  background-color: var(--color-sidebar);
+  border: 1px solid var(--color-sidebar-text-strong);
+  border-radius: 999px;
+}
+
+/*
+ * Inverted on hover rather than lightened. Two greens a shade apart measured 1.39:1 — a
+ * hover state nobody can see is not a hover state.
+ */
+.brand-field__action:hover,
+.brand-field__action:focus-visible {
+  color: var(--color-primary-hover);
+  background-color: var(--color-sidebar-text-strong);
+}
+
+/* The quieter of two actions side by side: white fill, green label, no second weight. */
+.brand-field__action--solid {
+  color: var(--color-primary-hover);
+  background-color: var(--color-sidebar-text-strong);
+}
+
+.brand-field__action--solid:hover,
+.brand-field__action--solid:focus-visible {
+  color: var(--color-sidebar-text-strong);
+  background-color: var(--color-sidebar);
+}
+
+/* ------------------------------------------------ the stepper, on the field */
+
+/*
+ * THE STEPPER WAS UNREADABLE ON THE GREEN, and it is the one thing on a four-step
+ * registration that tells somebody where they are.
+ *
+ * `ui.css` builds it for a white page: the step names are the muted grey (#5b6373), the
+ * current step is --color-primary and the markers are a pale grey. On this
+ * field the grey is low-contrast, the green is green on green — invisible — and the pale
+ * markers float with no edge. All three are re-stated here, MEASURED against the
+ * gradient's two extremes.
+ *
+ * THE CURRENT STEP IS IDENTIFIED BY ITS WHITE RULE, 5.34:1 against the field's lightest
+ * point and 9.85:1 against its darkest, so it clears the 3:1 WCAG asks of a non-text
+ * indicator. The track behind the other steps is a translucent white that does NOT clear
+ * 3:1 and does not need to: it is the absence of a state, not the signal. Completed steps
+ * sit between the two, and are told apart from the current one by the tick, the marker and
+ * the heavier label rather than by that rule alone.
+ */
+.brand-field .ui-stepper__item {
+  /* 4.68:1 at the field's lightest, 8.64:1 at its darkest. */
+  color: var(--color-sidebar-text);
+  border-top-color: rgb(255 255 255 / 30%);
+}
+
+.brand-field .ui-stepper__item--current {
+  color: var(--color-sidebar-text-strong);
+  border-top-color: var(--color-sidebar-text-strong);
+}
+
+/*
+ * Completed steps keep the field's text colour rather than the palette's success green,
+ * which on this background is another green nobody can separate from the field. The tick
+ * in the marker is what says "done" — icon plus the word in the accessible name, which is
+ * the rule the rest of this portal keeps (blueprint section 23).
+ */
+.brand-field .ui-stepper__item--done {
+  color: var(--color-sidebar-text);
+  border-top-color: rgb(255 255 255 / 65%);
+}
+
+/*
+ * The markers are a white disc with a dark green numeral, not a grey disc with a white
+ * one. MEASURED: at 65% white the numeral reads 5.85:1 over the field's darkest point and
+ * 6.98:1 over its lightest, and the disc itself is 3.37:1 against the field at worst — so
+ * the circle has a visible edge without needing a border drawn round it.
+ */
+.brand-field .ui-stepper__marker {
+  color: var(--color-primary-hover);
+  background-color: rgb(255 255 255 / 65%);
+}
+
+.brand-field .ui-stepper__item--current .ui-stepper__marker,
+.brand-field .ui-stepper__item--done .ui-stepper__marker {
+  background-color: var(--color-sidebar-text-strong);
+}
+
+/* ====================================================================== the card */
+
+/*
+ * The white card that floats on the field: the sign-in card, each registration option,
+ * the registration form, the landing page's illustration.
+ *
+ * A soft rectangle with a shadow and NO border. On the green, a 1px grey border is
+ * invisible and the shadow is what separates the card from the field; the border only
+ * ever showed up as a faint seam at the corners where the radius and the border part
+ * company.
+ */
+.brand-card {
+  padding: var(--space-8);
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border-radius: 28px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 22%);
+}
+
+@media (width < 900px) {
+  .brand-card {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
+/* ------------------------------------------- the controls inside a card */
+
+/*
+ * PILL FIELDS, scoped to a brand card so no other form in the portal changes shape.
+ *
+ * Taller than the portal's standard input because a rounded field needs the extra height
+ * to stop the text crowding the curve, and 52px is comfortably past the 44px minimum the
+ * blueprint sets for a touch target.
+ */
+.brand-card .ui-input,
+.brand-card .ui-select {
+  min-height: 52px;
+  padding-inline: var(--space-4);
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: 999px;
+}
+
+/* A multi-line box cannot be a pill; it gets the card's own corner instead. */
+.brand-card .ui-textarea {
+  border-radius: var(--radius-lg);
+}
+
+.brand-card .ui-input:focus-visible,
+.brand-card .ui-select:focus-visible {
+  border-color: var(--color-primary);
+}
+
+/* The buttons in a card follow the same rounding as the fields above them. */
+.brand-card .ui-btn {
+  border-radius: 999px;
+}
+
+/*
+ * Room for a round button inside a field, replacing the 5.5rem the shared rule leaves
+ * for the "Show"/"Hide" text button. Only applied where the adornment IS round — a
+ * `.brand-go` wrapper — because the password screens still use the text toggle and would
+ * have their label clipped.
+ */
+.brand-card .ui-input-wrap:has(.brand-go) .ui-input {
+  padding-right: 3.6rem;
+}
+
+/*
+ * THE ROUND SUBMIT INSIDE A FIELD, as the reference draws it.
+ *
+ * A wrapper class rather than a prop on Button: `Button` deliberately accepts no
+ * className, and it is worth keeping — it is the component that disables itself while a
+ * request is in flight, which is the double-submit guard every financial form in this
+ * portal relies on. So the shape is applied from outside and the behaviour is untouched.
+ *
+ * 40px, which clears the 24px WCAG asks of a target. It is smaller than the 44px the
+ * blueprint prefers, and that is the one concession the reference design costs: the
+ * trade is recorded in docs/OPEN-ITEMS.md rather than left for somebody to find.
+ */
+.brand-card .brand-go .ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  font-size: var(--text-lg);
+  line-height: 1;
+  border-radius: 50%;
+}

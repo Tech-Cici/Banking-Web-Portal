@@ -1,0 +1,502 @@
+/*
+ * The bank's own portal.
+ *
+ * Deliberately a different skin from the customer portal. A dark header, a flat
+ * horizontal nav and tighter type: an employee should never be unsure which system they
+ * are typing into, and a customer who lands here should see at a glance that it is not
+ * for them. Same design tokens, different arrangement — it is recognisably the same
+ * bank, not a different product.
+ */
+
+.staff {
+  display: flex;
+  flex-direction: column;
+  /* dvh rather than vh, so the shell is the height of the screen and not the height of
+     the screen plus whatever the phone's address bar is occupying. */
+  min-height: 100dvh;
+  background-color: var(--color-surface-sunken);
+}
+
+.staff__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-text-inverse);
+  /* Darker than the customer header: this is the back office, not the shopfront. */
+  background-color: var(--color-primary-hover);
+}
+
+.staff__brand {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.staff__brand-name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.staff__who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.staff__signout {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+  background: none;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: var(--radius-sm);
+}
+
+.staff__signout {
+  transition:
+    background-color var(--duration-fast) var(--easing),
+    border-color var(--duration-fast) var(--easing);
+}
+
+.staff__signout:hover {
+  background-color: rgb(255 255 255 / 12%);
+  border-color: rgb(255 255 255 / 70%);
+}
+
+/*
+ * SCROLLS SIDEWAYS RATHER THAN WRAPPING.
+ *
+ * It used to wrap, which on a narrow screen turned five sections into three stacked
+ * rows of sticky chrome — and now that the bar is sticky, every one of those rows would
+ * eat the screen for the whole session. Scrolling keeps it one row tall whatever fits.
+ *
+ * `scroll-snap` on the links means a swipe lands on a tab rather than halfway across
+ * one, and the container is still a plain flex row on a desktop where everything fits.
+ */
+.staff__nav {
+  /*
+   * STICKY AT THE TOP OF THE WINDOW, with no offset to get wrong.
+   *
+   * `top: 0` works because the header above is in normal flow: the bar sits under it
+   * until the header scrolls past, then pins. Pinning the header too would have needed
+   * this bar to know the header's height — which varies, because the header wraps to
+   * two lines when a long name and role no longer fit beside the brand — and would have
+   * put 192px of permanent chrome on a 780px phone screen.
+   *
+   * z-index 20 is above the page and clear of the skip link at 100 (styles/global.css).
+   */
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  padding: 0 var(--space-6);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+  scroll-snap-type: x proximity;
+  /* Stops a horizontal swipe on the tabs from triggering the browser's back gesture. */
+  overscroll-behavior-x: contain;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.staff__nav-link {
+  flex: 0 0 auto;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  border-bottom: 3px solid transparent;
+  transition:
+    background-color var(--duration-fast) var(--easing),
+    color var(--duration-fast) var(--easing),
+    border-bottom-color var(--duration-fast) var(--easing);
+}
+
+.staff__nav-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-surface-sunken);
+}
+
+.staff__nav-link--active {
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.staff__main {
+  flex: 1;
+  width: 100%;
+  max-width: 76rem;
+  /* Centred once the screen is wider than the cap. Left-aligned, a 2560px monitor put
+     1344px of empty page to the right of every list. Resolves to zero below 1216px. */
+  margin-inline: auto;
+  padding: var(--space-6);
+  /* So the skip link lands on the content and not underneath the sticky chrome. The
+     value is generous because this header's height varies with the name in it. */
+  scroll-margin-top: var(--space-12);
+}
+
+.staff__narrow {
+  max-width: 44rem;
+}
+
+.staff__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---------------------------------------------------------------- sign-in */
+
+.staff-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background-color: var(--color-primary-hover);
+}
+
+.staff-login__card {
+  width: 100%;
+  max-width: 28rem;
+  padding: var(--space-8);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.staff-login__eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.staff-login__title {
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.staff-login__lead {
+  margin: var(--space-2) 0 var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.staff-login__security {
+  margin-top: var(--space-6);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------- overview */
+
+.staff__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.staff__counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-4);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.staff__count {
+  display: block;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+}
+
+.staff__count-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.staff__steps {
+  padding-left: var(--space-6);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.staff__steps li {
+  margin-bottom: var(--space-3);
+}
+
+/* ---------------------------------------------------------------- the one-time secret */
+
+/*
+ * The temporary password panel.
+ *
+ * Loud on purpose. It is shown exactly once and cannot be recovered, so it must not
+ * look like an ordinary field someone scrolls past.
+ */
+.staff__secret {
+  padding: var(--space-6);
+  margin: var(--space-6) 0;
+  text-align: center;
+  background-color: var(--color-primary-subtle);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+}
+
+.staff__secret-label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.staff__secret-value {
+  margin: var(--space-4) 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+  /* Selectable, so it can be copied onto the slip the customer takes away. */
+  user-select: all;
+}
+
+.staff__secret-note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The line on the approval panel that routes a manager to the registration they are
+ * approving. Quiet, but it has to be findable: it is the only way from that screen to
+ * the details the warning tells them to check.
+ */
+.staff__note {
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.staff__ack {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.staff__action--muted {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------- review + mail */
+
+.staff__review {
+  margin-top: var(--space-6);
+}
+
+.staff__mail {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.staff__mail-item {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.staff__mail-item:last-child {
+  border-bottom: none;
+}
+
+.staff__mail-subject {
+  font-weight: var(--weight-semibold);
+}
+
+.staff__mail-body {
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre-wrap;
+  background-color: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+@media (width <= 620px) {
+  .staff__stats {
+    grid-template-columns: 1fr;
+  }
+
+  .staff__main {
+    padding: var(--space-4) var(--space-3);
+  }
+}
+
+/*
+ * One row of the "accounts to open" list: a number, a type, a currency, an opening
+ * balance, and a way to remove it.
+ *
+ * FIVE CHILDREN IN A THREE-COLUMN GRID WAS A BUG, and it was mine. The row was built
+ * for three fields; adding the opening balance made it five and the template was never
+ * widened, so the browser wrapped the last two onto an implicit second row — an opening
+ * balance sitting under the account number, at the account number's width, with the
+ * Remove button beside it. It looked like a layout accident because it was one.
+ *
+ * `auto-fit` with a floor rather than a fixed count, because the number of fields in
+ * this row has now changed twice. Columns are equal and the row reflows on its own:
+ * five across on a branch terminal, two or three on a laptop, one on a phone. A sixth
+ * field would not need this rule touched.
+ */
+.staff__account-row {
+  display: grid;
+  /*
+   * 14rem, WHICH MEANS TWO FIELDS PER LINE IN THIS PANEL.
+   *
+   * It was 10rem, and that let all four fit across a 670px panel at 215px each — too
+   * narrow for the job. "Locked for a fixed term at an agreed rate." wrapped to two
+   * lines under the type select, the opening-balance hint to three, and the whole row
+   * read as cramped because it was. This screen sits in `.staff__narrow` (44rem), so
+   * four columns was never going to work here.
+   *
+   * At 14rem the panel takes two columns of about 330px: labels on one line, hints on
+   * one line, and the row wraps to a second line for the remaining two fields. Still
+   * `auto-fit`, so a wider container is free to fit more — the number of fields in this
+   * row has already changed twice.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3) var(--space-4);
+  /*
+   * TOPS, NOT BOTTOMS, and the change is the fix to a badly broken row.
+   *
+   * This was `align-items: end`, which was right when every field was a bare label and
+   * input. Two of them now carry hints — the account type explains what the chosen
+   * product is, the opening balance says which currency it is in — and a hint sits BELOW
+   * the input. Aligning bottoms therefore aligned the ends of the hints and let
+   * everything above float: measured at 1280px, the four labels sat at four different
+   * heights spanning 138 pixels, and the four inputs at four more. It read as a broken
+   * page, because it was one.
+   *
+   * Aligning tops fixes the labels outright and the inputs whenever the labels are one
+   * line, which they are at every width this row is used at. The block below does it
+   * properly.
+   */
+  align-items: start;
+  margin-bottom: var(--space-3);
+}
+
+/*
+ * THE PROPER FIX: one shared row each for the labels, the controls and the hints.
+ *
+ * `subgrid` lets each field adopt the row's own tracks instead of laying itself out
+ * independently, so a label is on the label line and an input is on the input line
+ * whatever length the hint underneath it happens to be. Four rows, because a field is at
+ * most label, control, hint and error (FormField.tsx) — a field with fewer simply leaves
+ * the later rows empty.
+ *
+ * Behind `@supports` rather than used outright, and `align-items: start` above is a real
+ * fallback rather than a formality: without subgrid the labels still line up and the
+ * inputs follow them, which is the ordinary case. A banking portal is the wrong place to
+ * make a layout depend on a feature being present.
+ */
+@supports (grid-template-rows: subgrid) {
+  .staff__account-row {
+    grid-template-rows: auto auto auto auto;
+    align-items: stretch;
+  }
+
+  .staff__account-row .ui-field {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+  }
+}
+
+/*
+ * Remove sits on its own line at the end of the block, not in a field column.
+ *
+ * It acts on the whole account, not on whichever field it happens to land beside — and
+ * as a grid item competing for a column it either squeezed a field or floated at a
+ * height that matched nothing. Full width and left-aligned, it reads as what it is: the
+ * end of this account's block.
+ */
+.staff__account-row > .ui-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/*
+ * Stacked below 30rem, where two 10rem columns plus the gap no longer fit. `auto-fit`
+ * would otherwise keep a track wider than the screen — a grid track never clips, it
+ * pushes the page sideways.
+ */
+/*
+ * THE FIELDS GIVE UP THEIR BOTTOM MARGIN INSIDE THIS ROW.
+ *
+ * `.ui-field` carries `margin-bottom: 24px` for stacked forms, which is right
+ * everywhere else and wrong here. `align-items: end` aligns MARGIN boxes, so each
+ * input's visible bottom edge sat 24px above the row's bottom while the Remove button —
+ * which has no margin — sat on the row's bottom. The button was a clear 24px below the
+ * inputs it belongs to, and the row carried 24px of dead space under every field.
+ *
+ * The grid's own `gap` is the spacing here, so the margin has nothing left to do.
+ */
+.staff__account-row .ui-field {
+  margin-bottom: 0;
+}
+
+@media (width <= 30rem) {
+  .staff__account-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+/*
+ * "WE HOLD NO NAME FOR THIS" — an absence, written as one.
+ *
+ * It sits in the "Name we hold" column, which is the column that makes the payee queue a
+ * check rather than a sign-off. An empty cell there reads as either a rendering fault or
+ * an answer of "nothing wrong", and it is neither: three quarters of payees are at another
+ * institution, where no comparison is possible at all. So the absence says so in words,
+ * and is muted so it does not compete with the names in the rows that DO have one.
+ *
+ * `--color-text-muted`, not an opacity: a translucent grey over the warning-tinted row
+ * background a mismatch gets would take its colour from that tint and come out lighter
+ * than it measured here.
+ */
+.staff__muted {
+  color: var(--color-text-muted);
+  font-style: italic;
+}

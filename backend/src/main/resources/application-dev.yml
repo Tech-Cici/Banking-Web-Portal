@@ -1,0 +1,56 @@
+# Local development profile — PostgreSQL via docker-compose.
+#
+#     docker compose up -d db
+#     ./mvnw spring-boot:run
+#
+# PostgreSQL rather than H2 on purpose: once seeded data and migrations exist, developing
+# against a different engine than production is how a migration passes locally and fails
+# on deploy. Postgres also keeps seeded users across restarts, which H2 does not.
+#
+# This is the DEFAULT profile (spring.profiles.default in application.yml), so plain
+# `./mvnw spring-boot:run` lands here and needs that container running. Without it the
+# API refuses to start rather than coming up with no schema, which is the right way
+# round for a service that owns money.
+#
+# No Docker to hand? Install Postgres.app and run `./scripts/setup-local-db.sh`, which
+# creates the role and database this profile expects. See docs/LOCAL-DATABASE.md.
+#
+# `-Dspring-boot.run.profiles=h2` also starts with no dependencies at all, but its
+# database is IN MEMORY: every customer registered on it is gone at the next restart.
+# Fine for a quick look or the browser verification walks, wrong for testing onboarding
+# over more than one sitting.
+#
+# The credentials below match docker-compose.yml and are a throwaway local container's.
+# Every deployed environment supplies its own through the environment.
+
+spring:
+  datasource:
+    # Port 5433, matching docker-compose.yml. See the note there: 5432 is very often
+    # already taken by another project's PostgreSQL, and stopping that one to make room
+    # for this is not a reasonable thing to ask. Override DB_URL to point anywhere else.
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/ibanking}
+    username: ${DB_USERNAME:ibanking}
+    password: ${DB_PASSWORD:ibanking_local_only}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # Fail fast with a readable message rather than hanging when the container is down.
+      connection-timeout: 5000
+      initialization-fail-timeout: 5000
+
+server:
+  servlet:
+    session:
+      cookie:
+        # Plain http on localhost, so a secure-only cookie would never be sent.
+        secure: false
+
+ibanking:
+  cors:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+
+logging:
+  level:
+    org.springframework.security: DEBUG

@@ -1,0 +1,87 @@
+# Render service definition for the API.
+#
+# THE FRONTEND IS NOT HERE. It deploys to Vercel from frontend/, and the database is Neon.
+# See frontend/DEPLOY.md for the whole picture and the order to do it in.
+#
+# EVERY SECRET IS `sync: false`, which means Render asks for it in the dashboard rather than
+# reading it from this file. A connection string or a bootstrap password committed to a
+# repository is a credential in every clone and every fork of it.
+
+services:
+  - type: web
+    name: zigama-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: frankfurt
+    # /actuator/health, NOT /api/v1/actuator/health. Actuator has no custom base-path and
+    # the app has no servlet context-path, so the API's /api/v1 prefix does not apply to it.
+    # Verified against the running service: this path answers 200 unauthenticated, while
+    # /api/v1/... answers 401 — which Render reads as unhealthy and restart-loops on.
+    healthCheckPath: /actuator/health
+
+    envVars:
+      # `demo`, not `postgres` and emphatically not `dev`. The demo profile keeps the
+      # development staff seeder out (its password is in this repository) and keeps the
+      # start-over endpoint refused, because DevResetController only permits dev, h2 and
+      # test. See backend/src/main/resources/application-demo.yml.
+      - key: SPRING_PROFILES_ACTIVE
+        value: demo
+
+      # ---- Neon. Note DB_URL must be a jdbc: URL with the credentials taken out.
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+
+      # ---- the browser app's exact origin, scheme and host, no trailing slash.
+      # The API refuses browser requests from an origin it has not been told about, so this
+      # is set AFTER Vercel exists and is the step most likely to be forgotten.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+      # ---- `none` while the frontend and API are on unrelated hosts, because a Strict
+      # cookie is not sent cross-site and the symptom is signing in and being signed
+      # straight out. Put both behind one domain and set this back to `strict`;
+      # application-demo.yml has the full reasoning.
+      - key: SESSION_COOKIE_SAME_SITE
+        value: none
+
+      # ---- the first two staff logins. Without these nobody can sign into /staff, which
+      # means no account can be created or approved and the portal does nothing. The two
+      # addresses must differ.
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: BOOTSTRAP_MANAGER_EMAIL
+        sync: false
+      - key: BOOTSTRAP_MANAGER_PASSWORD
+        sync: false
+
+      # ---- mail. DELIBERATELY `sync: false` rather than defaulting to either value,
+      # because both choices cost something and the choice should be made knowingly.
+      #
+      #   true  — needs MAIL_USERNAME and a Google App Password below. Verification codes
+      #           and temporary passwords arrive by email and the demo works unassisted.
+      #           With it true and the credentials blank, every send fails: the message is
+      #           still recorded (undelivered, body intact) so the flow is still walkable,
+      #           but the log fills with errors and nobody receives anything.
+      #   false — nothing is sent. Every message is recorded instead and read from
+      #           /staff/developer-tools, which needs VITE_ENABLE_DEV_TOOLS=true on the
+      #           Vercel side. Works on day one with no mail account at all; whoever is
+      #           trying the portal has to be handed their code by somebody.
+      - key: MAIL_ENABLED
+        sync: false
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        sync: false
+      # A Google App Password, not the account password.
+      - key: MAIL_PASSWORD
+        sync: false

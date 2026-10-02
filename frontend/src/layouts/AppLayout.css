@@ -1,0 +1,481 @@
+/*
+ * THE STACKING ORDER, written down once.
+ *
+ * Sticky and overlay elements in one shell are the classic source of "why is this
+ * behind that" — so the whole ladder lives here rather than being discovered one
+ * z-index at a time:
+ *
+ *    10  sidebar, sticky on desktop (below the header it tucks under)
+ *    30  header, sticky at the top of every screen
+ *    40  scrim, over the page but under the drawer it dims for
+ *    45  sidebar as a drawer on narrow screens
+ *   100  the skip link (styles/global.css) — ABOVE ALL OF IT, deliberately.
+ *        It is the first focusable thing on the page and must never be covered
+ *        by chrome that a keyboard user is trying to skip past.
+ */
+
+/*
+ * WHERE THE SIDEBAR BECOMES A DRAWER: 900px, not 1024px.
+ *
+ * It was 1024px, which gave away the two sizes that matter most on a tablet. At 1024px
+ * an iPad in landscape had no navigation on screen at all — every move meant opening a
+ * drawer — while the page had a thousand pixels to spend. And crossing the line made the
+ * dashboard WORSE rather than better: at 1024px it was two columns of panels with no
+ * sidebar, and at 1025px the 260px sidebar left too little room for two, so it collapsed
+ * to one. A single step to the right cost the customer a column.
+ *
+ * 900px with a narrower sidebar through the middle of the range gives a persistent menu
+ * from small tablets upward AND keeps two columns on both sides of the boundary. The
+ * numbers are checked at 18 widths from 320px to 2560px, not reasoned about.
+ */
+.app-layout {
+  display: grid;
+  grid-template-areas:
+    'header header'
+    'sidebar main';
+  /*
+   * TWO ROWS, NOT THREE. The third was a footer, and removing it is what lets the content
+   * reach the bottom edge of the window: `1fr` is now the last track, so the main area
+   * takes every pixel between the header and the bottom instead of leaving a strip.
+   */
+  grid-template-rows: var(--header-height) 1fr;
+  /*
+   * `minmax(0, 1fr)`, NEVER a bare `1fr`, and this is the fix to a whole class of bug.
+   *
+   * A `1fr` track has an automatic minimum of min-content, so it does not clip or scroll
+   * its contents — it GROWS. One long name in the header made this column 457px wide
+   * inside a 360px screen: the menu button went off the edge (the only way to reach the
+   * navigation on a phone), and the entire page scrolled sideways rather than the one
+   * element that was too wide.
+   *
+   * The same applies to anything else that can be wider than its column — a wide table,
+   * a long unbroken account reference. With a zero minimum the track stays put and the
+   * overflow is handled where it belongs, inside the element (`.ui-table-wrap` scrolls,
+   * the name truncates).
+   */
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  /*
+   * THE GREEN GOES ALL THE WAY DOWN, painted on the grid rather than on the menu.
+   *
+   * The sidebar itself is sticky and capped at the viewport height (see its own rule), so
+   * on any page taller than one screen the green column simply stopped and left a white
+   * strip down the left-hand side. Raising the menu's own height is what caused a
+   * different bug — recorded on that rule — so the colour is put on the container
+   * instead: the gradient has a hard stop at the sidebar's width, so the left column is
+   * green for the full height of the page whatever the menu inside it is doing.
+   */
+  background: linear-gradient(
+    to right,
+    var(--color-sidebar) 0 var(--sidebar-width),
+    var(--color-surface-sunken) var(--sidebar-width) 100%
+  );
+  /* dvh, not vh: on a phone `vh` includes the space the browser's own address bar
+     occupies, so a 100vh shell is always slightly taller than the screen and the page
+     scrolls a few pixels for no reason. */
+  min-height: 100dvh;
+}
+
+.app-layout__header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  grid-area: header;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  /* A fixed height, so the sidebar and the page's scroll padding can both offset
+     themselves against it without measuring anything at runtime. */
+  height: var(--header-height);
+  padding: 0 var(--space-6);
+  color: var(--color-text-inverse);
+  background-color: var(--color-primary);
+  /* Signals that content passes underneath rather than stopping at the edge. */
+  box-shadow: var(--shadow-md);
+}
+
+.app-layout__brand {
+  flex: 0 0 auto;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  /*
+   * THE HEADER HAS A FIXED HEIGHT NOW, so nothing in it may wrap.
+   *
+   * On a 390px phone "Zigama CSS" broke onto two lines beside the sign-out and menu
+   * buttons — which was merely untidy while the header sized itself, and would clip the
+   * bank's own name now that the height is pinned to the offset everything else
+   * measures against.
+   */
+  white-space: nowrap;
+}
+
+.app-layout__header-right {
+  display: flex;
+  /* `min-width: 0` so the name below is allowed to shrink and truncate rather than
+     forcing the row wider than the header. */
+  min-width: 0;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.app-layout__whoami {
+  font-size: var(--text-sm);
+  /*
+   * THE NAME IS THE ONLY THING IN THE HEADER ALLOWED TO SHRINK.
+   *
+   * `overflow: hidden` alone did not work and the measurement is why this comment
+   * exists: a flex item defaults to `min-width: auto`, which refuses to shrink below its
+   * content, so "Ella Uwajuru Singizwa · Global Kwik Koders Ltd" made the header 457px
+   * wide inside a 360px screen — pushing the menu button off the edge, which is the only
+   * way to reach the navigation on a phone, and giving the whole page a horizontal
+   * scrollbar.
+   *
+   * `min-width: 0` is what lets the ellipsis actually happen. The two buttons opt out of
+   * shrinking entirely below, so the name gives up its space first.
+   */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-layout__company {
+  opacity: 0.85;
+}
+
+/*
+ * Sign out and the menu toggle share one look.
+ *
+ * THE MENU TOGGLE HAD NO RULE AT ALL. It only ever appeared below 1024px, where nobody
+ * had looked, so on every phone it rendered as a default grey browser button sitting on
+ * the green header — next to a sign-out button that was styled. Same treatment for both:
+ * they are the two controls in the header and they do the same kind of job.
+ */
+.app-layout__signout,
+.app-layout__nav-toggle {
+  /* Never shrink: a clipped "Sign out" or a half-width menu button is worse than a
+     truncated name, and one of them is the only route to the navigation on a phone. */
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-inverse);
+  white-space: nowrap;
+  background: none;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: var(--radius-sm);
+  transition:
+    background-color var(--duration-fast) var(--easing),
+    border-color var(--duration-fast) var(--easing);
+}
+
+.app-layout__signout:hover,
+.app-layout__nav-toggle:hover {
+  background-color: rgb(255 255 255 / 12%);
+  border-color: rgb(255 255 255 / 70%);
+}
+
+@media (width <= 620px) {
+  .app-layout__company {
+    display: none;
+  }
+}
+
+.app-layout__sidebar {
+  position: sticky;
+  /* Tucked directly under the sticky header. */
+  top: var(--header-height);
+  z-index: 10;
+  grid-area: sidebar;
+  /*
+   * `align-self: start` is what makes sticky work here at all: a grid item stretches to
+   * fill its row by default, and an element already as tall as its containing block has
+   * nowhere to stick to. Capping the height at the space left below the header then
+   * gives the menu its own scrollbar, so a long menu scrolls without taking the page
+   * with it.
+   *
+   * MAX-HEIGHT, NOT HEIGHT, and that was a real bug rather than a preference. `height`
+   * forced this column to a full viewport regardless of its grid row, so on a short page
+   * it painted straight through whatever was below it — at the time a footer row, which
+   * read "me code." with the rest of "Never share your password or one-time code." hidden
+   * behind the menu, because z-index 10 beat the footer's none. That footer has since
+   * been removed, and the rule stays: the same escape would now paint over the page below
+   * the grid instead. `max-height` lets the box be as tall as its content, up to the
+   * viewport, so it stays inside its own row.
+   */
+  align-self: start;
+  max-height: calc(100dvh - var(--header-height));
+  padding: var(--space-4) 0;
+  overflow-y: auto;
+  /* Stops a flick at the end of the menu from scrolling the page behind it. */
+  overscroll-behavior: contain;
+  /*
+   * GREEN, like the header above it rather than the page beside it.
+   *
+   * A shade darker than the header, so the two read as two surfaces of one chrome
+   * instead of one large block of green with a seam in it. The border is gone with the
+   * white background: a light rule between two dark greens is a line nobody asked for,
+   * and the colour change is the boundary.
+   */
+  background-color: var(--color-sidebar);
+}
+
+.app-layout__nav-group + .app-layout__nav-group {
+  margin-top: var(--space-4);
+}
+
+.app-layout__nav-heading {
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  /* Its own token: --color-text-muted is tuned for white and vanishes on dark green. */
+  color: var(--color-sidebar-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.app-layout__nav-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.app-layout__nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition:
+    background-color var(--duration-fast) var(--easing),
+    color var(--duration-fast) var(--easing),
+    border-left-color var(--duration-fast) var(--easing);
+}
+
+.app-layout__nav-link:hover {
+  background-color: var(--color-sidebar-raised);
+  color: var(--color-sidebar-text-strong);
+}
+
+/*
+ * The focus ring is drawn INSIDE this one.
+ *
+ * Every other control in the app takes the global `outline-offset: 2px` (reset.css),
+ * which puts the ring clear of the element so it reads against the page. These links
+ * are as wide as the sidebar that scrolls them, so a ring 2px outside overflows that
+ * container — producing a horizontal scrollbar in the menu, and a ring clipped down its
+ * outer edge. Inset by the same amount: equally visible, nothing to overflow.
+ */
+.app-layout__nav-link:focus-visible {
+  outline-offset: -2px;
+  /*
+   * A LIGHT RING, because the global focus colour is chosen to be seen against white and
+   * is nearly invisible on dark green. Keyboard focus that cannot be seen is the same as
+   * no focus indicator at all.
+   */
+  outline-color: var(--color-sidebar-text-strong);
+}
+
+/*
+ * THE CURRENT PAGE.
+ *
+ * Inverted rather than tinted: white text on the lighter green, with a white rule down
+ * the left edge. The old rule put dark green text on a pale green fill, which on a dark
+ * sidebar would have been the only light block in the menu and would have read as a
+ * disabled item rather than the selected one.
+ *
+ * The left border carries it as well as the fill, so the current page is still
+ * identifiable in high-contrast mode and to anybody who cannot separate the two greens.
+ */
+.app-layout__nav-link--active {
+  font-weight: var(--weight-semibold);
+  color: var(--color-sidebar-text-strong);
+  background-color: var(--color-sidebar-selected);
+  border-left-color: var(--color-sidebar-text-strong);
+}
+
+.app-layout__main {
+  grid-area: main;
+  width: 100%;
+  max-width: var(--content-max-width);
+  /*
+   * CENTRED IN ITS COLUMN once the content stops growing.
+   *
+   * The max-width caps the content at 1440px, and without this it stayed pinned to the
+   * sidebar: on a 2560px monitor that left 860px of blank page down the right-hand side
+   * and the dashboard bunched into the left two thirds of the screen.
+   *
+   * Below 1440px the column is narrower than the cap, so `auto` margins resolve to zero
+   * and nothing moves. This only ever takes effect on a screen wide enough to need it.
+   */
+  margin-inline: auto;
+  padding: var(--space-6);
+  /*
+   * So the skip link lands where it says it does. Moving focus here scrolls it into
+   * view, and without this offset the top of the content stops flush under the sticky
+   * header — the first heading hidden behind the chrome the user just skipped.
+   */
+  scroll-margin-top: var(--header-height);
+}
+
+/*
+ * The scrim behind the drawer. Nothing on desktop, where there is no drawer.
+ */
+.app-layout__scrim {
+  display: none;
+}
+
+/*
+ * A NARROWER MENU THROUGH THE MIDDLE OF THE RANGE: 900px to 1280px.
+ *
+ * Wide enough for a sidebar, not wide enough to give it 260px and still fit two panels
+ * beside it — which is exactly the band where the old 1024px breakpoint cost the
+ * dashboard a column. 208px still clears the longest label ("Foreign exchange" is about
+ * 115px at 14px, plus the 24px gutter either side).
+ *
+ * Set on the shell rather than in tokens.css: it is a fact about this layout, not about
+ * the design system, and nothing outside this file reads the token.
+ */
+@media (width >= 900px) and (width <= 1280px) {
+  .app-layout {
+    --sidebar-width: 208px;
+  }
+}
+
+/*
+ * BELOW 900px: the navigation becomes a DRAWER OVER the page.
+ *
+ * It used to be a disclosure that pushed the page down — `display: block` on a grid item
+ * inserted above `main`. Opening the menu therefore shoved the content the customer was
+ * reading off the bottom of the screen, and closing it yanked it back. On a phone, with
+ * five groups and up to sixteen links, the page they came for was several screens away
+ * from where they left it.
+ *
+ * A drawer leaves the page where it is. The one thing an overlay must never do is trap
+ * anybody: it closes on Escape, on a tap outside, and on any navigation (AppLayout.tsx),
+ * and while closed `visibility: hidden` keeps it out of the tab order rather than
+ * leaving an invisible menu for a keyboard user to fall into.
+ */
+@media (width < 900px) {
+  .app-layout {
+    grid-template-areas:
+      'header'
+      'main';
+    /* Zero minimum, for the reason given on the desktop track above. */
+    grid-template-columns: minmax(0, 1fr);
+    /*
+     * AND NO GREEN STRIPE. There is no sidebar column at this width — the menu is a
+     * drawer that slides over the page — so the gradient would paint a band of green
+     * down the left of the content for a column that is not there.
+     */
+    background: var(--color-surface-sunken);
+  }
+
+  .app-layout__sidebar {
+    /* Its own green, since at this width there is no column behind it to supply one. */
+    background-color: var(--color-sidebar);
+    position: fixed;
+    top: var(--header-height);
+    right: auto;
+    bottom: 0;
+    left: 0;
+    z-index: 45;
+    grid-area: auto;
+    /*
+     * `align-self: stretch` UNDOES THE DESKTOP RULE, and it is load-bearing.
+     *
+     * The rule above sets `align-self: start` so the sticky desktop column has somewhere
+     * to stick. Left in place here it breaks the drawer outright: Chromium lays a
+     * fixed-position grid item out at its STATIC position when align-self is `start`,
+     * ignoring top and bottom, so the panel painted from the very top of the screen —
+     * over the header, at its full content height, with no internal scroll. Verified by
+     * reproducing it in isolation: adding this one declaration to a ten-line test page
+     * changes the measured box from (top 64, height 716) to (top 0, height 954).
+     *
+     * Resetting it is the whole fix. Leave it out and the drawer covers the toggle that
+     * closes it.
+     */
+    align-self: stretch;
+    /*
+     * Narrower than it was. At 82vw the strip of page left showing was about 70px on a
+     * phone — technically a tap target for "tap outside to close", practically a sliver.
+     * The header stays visible above the drawer, so the toggle is the reliable way out;
+     * this just makes the tap-outside one real too.
+     */
+    width: min(19rem, 74vw);
+    height: auto;
+    /*
+     * No light rule on the drawer either, for the same reason as the desktop sidebar.
+     * The shadow is what separates it from the page it slides over, and a shadow does
+     * that better than a 1px line against dark green.
+     */
+    box-shadow: var(--shadow-md);
+    visibility: hidden;
+    transform: translateX(-100%);
+    /*
+     * `visibility` is transitioned alongside the slide on purpose. It flips to visible
+     * at the START of the opening transition and to hidden only at the END of the
+     * closing one, so the panel is untabbable when shut without the slide being cut
+     * off. Under `prefers-reduced-motion` both durations are 0ms (tokens.css) and this
+     * becomes a plain show/hide.
+     */
+    transition:
+      transform var(--duration-base) var(--easing),
+      visibility var(--duration-base) var(--easing);
+  }
+
+  .app-layout__sidebar--open {
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  .app-layout__scrim {
+    position: fixed;
+    /* Longhands, for the same reason as the drawer above. */
+    top: var(--header-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: block;
+    /* Not a token: this is a scrim over arbitrary page content, not a surface. */
+    background-color: rgb(22 25 31 / 45%);
+    border: 0;
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity var(--duration-base) var(--easing),
+      visibility var(--duration-base) var(--easing);
+  }
+
+  .app-layout__scrim--open {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+@media (width >= 900px) {
+  .app-layout__nav-toggle {
+    display: none;
+  }
+}
+
+@media (width <= 480px) {
+  .app-layout__main {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  /* Tighter, so the brand, the name and two buttons all fit one line at 360px. */
+  .app-layout__header {
+    gap: var(--space-2);
+    padding: 0 var(--space-3);
+  }
+
+  .app-layout__brand {
+    font-size: var(--text-base);
+  }
+
+  .app-layout__header-right {
+    gap: var(--space-2);
+  }
+}

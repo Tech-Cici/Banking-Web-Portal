@@ -1,0 +1,85 @@
+# DEMO PROFILE: a deployed instance for people to try, not a production bank.
+#
+# WHAT IT IS FOR. A URL somebody can be shown — a manager, a colleague, the bank — backed by
+# a real database so the flows behave as they will in production. It is NOT production: the
+# bank has not supplied its legal name, logo, contact details, terms or privacy notice, and
+# seven feature areas have no backend at all. docs/OPEN-ITEMS.md is the list.
+#
+# WHY IT IS ITS OWN PROFILE rather than reusing `postgres`:
+#
+#   - StaffSeeder must NOT run here (it is dev/h2/test only, and its seeded passwords are
+#     published in this repository). StaffBootstrap runs instead, from the environment.
+#   - The dev reset must not be reachable. DevResetController refuses outside dev, h2 and
+#     test, and this profile is none of them — so the reset is off here by construction,
+#     which is the point of not calling the profile `dev`.
+#   - The session cookie needs a different SameSite value when the browser app and the API
+#     are on unrelated hosts. See below; that is a real trade and it is why this is written
+#     down rather than configured by hand on a dashboard.
+spring:
+  datasource:
+    # Neon. The URL must be the JDBC form and carry sslmode=require; Neon refuses
+    # plaintext connections.
+    #
+    # NO `:?` HERE, AND NO DEFAULTS. Spring is not a shell: a colon in a placeholder
+    # introduces a DEFAULT, so `${DB_URL:?DB_URL must be set}` does not mean "required with
+    # a message" — it means "default to the text `?DB_URL must be set`", which is then
+    # handed to Hikari as a JDBC URL. That was how this file was first written, and the
+    # resulting failure was twenty lines of bean cascade ending in `'url' must start with
+    # "jdbc"`, naming neither the variable nor this profile.
+    #
+    # An unset variable therefore leaves the literal `${DB_URL}` in the property.
+    # DemoEnvironmentCheck looks for exactly that and refuses to start, naming the variable.
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      # SMALLER THAN THE POSTGRES PROFILE'S TEN. Neon's free tier caps connections, and a
+      # JVM pool that opens more than the database allows fails at the worst moment — under
+      # the load that opened them.
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: 1
+      connection-timeout: 15000
+      # NEON SCALES TO ZERO when idle, and a compute that has slept drops its connections.
+      # Retiring them on our side first turns "the pool handed out a dead socket" into a
+      # reconnect nobody notices. Shorter than the postgres profile for the same reason.
+      max-lifetime: 300000
+      idle-timeout: 120000
+      keepalive-time: 60000
+
+  jpa:
+    # Flyway owns the schema here as everywhere. Stated rather than inherited because this
+    # is the profile most likely to be pointed at a database somebody cares about.
+    hibernate:
+      ddl-auto: none
+
+server:
+  servlet:
+    session:
+      cookie:
+        # SAME-SITE IS A DEPLOYMENT DECISION, NOT A PREFERENCE, so it is a variable.
+        #
+        # Leave it `strict` when the browser app and the API share a registrable domain —
+        # portal.example.rw and api.example.rw are the SAME SITE, and nothing is weakened.
+        #
+        # Set it to `none` ONLY when they do not: a frontend on *.vercel.app calling an API
+        # on *.onrender.com is cross-site, and a Strict cookie is simply not sent, which
+        # presents as signing in and being immediately signed out again. `none` requires
+        # Secure (already true below) and gives up the CSRF protection SameSite buys — the
+        # service still has its own CSRF token, which is then the only layer. Acceptable for
+        # a demo; for production, put both behind one domain instead.
+        same-site: ${SESSION_COOKIE_SAME_SITE:strict}
+        secure: true
+        http-only: true
+
+ibanking:
+  cors:
+    # The browser app's origin, exactly — scheme and host, no trailing slash.
+    # e.g. https://zigama-portal.vercel.app
+    #
+    # Required, and checked by DemoEnvironmentCheck rather than by a placeholder default,
+    # for the reason given above the datasource URL.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+logging:
+  level:
+    rw.bank.ibanking: INFO

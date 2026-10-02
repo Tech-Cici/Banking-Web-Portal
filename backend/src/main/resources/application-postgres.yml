@@ -1,0 +1,28 @@
+# Template for DEPLOYED environments (staging, UAT, production).
+#
+# Local development now uses PostgreSQL too — see application-dev.yml, which points at the
+# docker-compose container. The difference is this profile refuses to start without an
+# explicitly supplied password, whereas dev defaults to the throwaway local one.
+#
+# Credentials come from the environment and are never defaulted to a real value here:
+# a committed password is a committed password, whatever file it sits in.
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ibanking}
+    username: ${DB_USERNAME:ibanking}
+    password: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: 2
+      connection-timeout: 10000
+      # Below the typical gateway idle timeout, so the pool retires connections first.
+      max-lifetime: 900000
+
+ibanking:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    rw.bank.ibanking: INFO

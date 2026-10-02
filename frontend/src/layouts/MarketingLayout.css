@@ -1,0 +1,263 @@
+/*
+ * Public marketing shell: top navigation + footer.
+ *
+ * Visually distinct from the authenticated AppLayout on purpose — a customer should be
+ * able to tell at a glance whether they are signed in. It is also deliberately plain:
+ * blueprint section 2.1 asks for a conservative banking look, and a pre-authentication
+ * page is exactly where over-designing erodes trust.
+ */
+
+.marketing {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-surface);
+}
+
+/* ---------- header ---------- */
+
+.marketing__header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.marketing__header-inner {
+  display: flex;
+  gap: var(--space-6);
+  align-items: center;
+  width: 100%;
+  max-width: var(--content-max-width);
+  min-height: var(--header-height);
+  padding: 0 var(--space-6);
+  margin: 0 auto;
+}
+
+.marketing__brand {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.marketing__brand-mark {
+  flex: none;
+}
+
+.marketing__nav {
+  display: flex;
+  flex: 1;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.marketing__nav-list {
+  display: flex;
+  gap: var(--space-1);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.marketing__nav-link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+
+.marketing__nav-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+}
+
+.marketing__actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-left: auto;
+}
+
+.marketing__nav-toggle {
+  display: none;
+  padding: var(--space-2) var(--space-3);
+  margin-left: auto;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- shared button styles (local to the marketing shell) ----------
+   These are intentionally NOT the design system. Phase 2 introduces a real Button
+   component; when it lands, replace these three classes and delete this block. */
+
+.mkt-btn {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid transparent;
+  /* A pill, matching the buttons on the green field and inside every card. */
+  border-radius: 999px;
+  transition: background-color var(--duration-fast) var(--easing);
+}
+
+.mkt-btn--primary {
+  color: var(--color-text-inverse);
+  background-color: var(--color-primary);
+}
+
+.mkt-btn--primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.mkt-btn--secondary {
+  color: var(--color-primary);
+  background-color: transparent;
+  border-color: var(--color-border-strong);
+}
+
+.mkt-btn--secondary:hover {
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+.mkt-btn--lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-base);
+}
+
+/* ---------- main ---------- */
+
+.marketing__main {
+  flex: 1;
+}
+
+/* ---------- footer ---------- */
+
+.marketing__footer {
+  padding: var(--space-12) var(--space-6) var(--space-6);
+  background-color: var(--color-surface-sunken);
+  border-top: 1px solid var(--color-border);
+}
+
+.marketing__footer-inner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-8);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.marketing__footer-heading {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.marketing__footer-list {
+  padding: 0;
+  margin: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.marketing__footer-list li + li {
+  margin-top: var(--space-2);
+}
+
+.marketing__footer-list a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.marketing__footer-list a:hover {
+  text-decoration: underline;
+}
+
+.marketing__security-note {
+  padding: var(--space-4);
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background-color: var(--color-warning-subtle);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}
+
+.marketing__legal {
+  max-width: var(--content-max-width);
+  padding-top: var(--space-6);
+  margin: var(--space-8) auto 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---------- responsive ---------- */
+
+@media (width <= 900px) {
+  .marketing__header-inner {
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .marketing__nav-toggle {
+    display: block;
+  }
+
+  .marketing__nav {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: var(--space-3);
+  }
+
+  .marketing__nav--open {
+    display: flex;
+  }
+
+  .marketing__nav-list {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .marketing__nav-link {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+  }
+
+  .marketing__actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin: var(--space-3) 0 0;
+  }
+}
+
+@media (width <= 480px) {
+  .marketing__footer {
+    padding: var(--space-8) var(--space-4) var(--space-4);
+  }
+}

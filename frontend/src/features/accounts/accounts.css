@@ -1,0 +1,240 @@
+/*
+ * Accounts, transactions and statements.
+ *
+ * Only the pieces the shared primitives do not cover: the filter row and the narrow
+ * column used by the request forms.
+ */
+
+.accounts__narrow {
+  max-width: 38rem;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  align-items: end;
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* The field wrapper carries its own bottom margin; inside the filter grid it is noise. */
+.filters .ui-field {
+  margin-bottom: 0;
+}
+
+.filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------ request a statement
+ *
+ * The page was three full-width controls stacked down a 38rem column: two date boxes
+ * and a select, each as wide as a paragraph, for inputs holding ten characters. Width
+ * carries meaning in a form — a field as wide as the page reads as though it wants a
+ * lot — so the dates are paired and the select is capped, and the eye has a shape to
+ * follow instead of three identical bars.
+ */
+
+.stmt__account {
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.stmt__account-name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Tabular figures so the digits of a mask line up rather than shimmering. */
+.stmt__mask {
+  margin-left: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.stmt__account-meta {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.stmt__fieldset {
+  padding: 0;
+  margin: 0 0 var(--space-6);
+  border: 0;
+}
+
+.stmt__legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.stmt__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.stmt__preset {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+}
+
+.stmt__preset:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+/*
+ * `aria-pressed` IS THE SELECTOR, deliberately — not a class this component also sets.
+ * One source of truth for "this range is chosen" means the chip cannot look selected to
+ * an eye while reading as unselected to a screen reader.
+ */
+.stmt__preset[aria-pressed='true'] {
+  font-weight: 600;
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+.stmt__preset:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.stmt__preset:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/*
+ * Two dates side by side: they are one decision, and stacking them invites reading the
+ * second as an unrelated question. `minmax(0, 1fr)` rather than `1fr`, because a 1fr
+ * track grows to its content's min-content width and a date input's intrinsic width
+ * would then push the pair wider than the column.
+ */
+.stmt__dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.stmt__dates .ui-field {
+  margin-bottom: 0;
+}
+
+.stmt__summary {
+  padding: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+/* A two-option select does not need 38rem. */
+.stmt__format {
+  max-width: 22rem;
+}
+
+.stmt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  padding-top: var(--space-2);
+}
+
+/*
+ * Cancel as a sibling with its own hit area, not a bare underlined word touching the
+ * button. It was 6px from the primary action, which on a phone is one thumb covering
+ * both.
+ */
+.stmt__cancel {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
+  color: var(--color-text-muted);
+}
+
+.stmt__cancel:hover {
+  color: var(--color-text);
+}
+
+.stmt__note {
+  padding-top: var(--space-6);
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+/*
+ * One column under 480px. Two date inputs in a 2-up grid on a 360px screen leaves each
+ * about 150px, which is narrower than the native picker's own control and clips it.
+ */
+@media (max-width: 480px) {
+  .stmt__dates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stmt__dates .ui-field:first-child {
+    margin-bottom: var(--space-4);
+  }
+
+  .stmt__actions > .ui-btn,
+  .stmt__cancel {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ------------------------------------------------- revealing your own number
+ *
+ * The number and its control on one line, wrapping on a phone rather than
+ * pushing the row wide. `numeric` gives tabular figures so a 13-digit number
+ * reads in groups instead of shimmering.
+ */
+.acct__reveal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+}
+
+.acct__reveal .ui-btn {
+  /* A tertiary button inside a table row should read as a link, not a control
+     competing with the value beside it. */
+  padding: 0;
+  font-size: var(--text-sm);
+}
+
+/*
+ * The heading between the account tiles and the comparison table. Both are lists of the
+ * same accounts, so without a break the table reads as a second, contradictory copy.
+ */
+.account__section {
+  margin: var(--space-6, 2rem) 0 var(--space-3, 0.75rem);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text);
+}

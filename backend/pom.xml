@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>rw.bank</groupId>
+    <artifactId>ibanking-api</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>ibanking-api</name>
+    <description>Internet Banking Web Portal - REST API</description>
+
+    <properties>
+        <!--
+            Java 17 is Spring Boot 4.1's own baseline, so this is the widest-compatible
+            target: the project builds on JDK 17, 21 and 25 alike.
+
+            Bumping to 21 is a one-line change here, worth doing once every developer and
+            every build agent has a 21 JDK. Virtual threads are the reason to want it - an
+            API that spends most of its time blocked on core-banking and provider calls is
+            exactly the workload they help. Nothing in the codebase requires it today.
+        -->
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Web / REST. In Boot 4 starter-web is deprecated in favour of starter-webmvc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <!-- Security. Phase 1 = secure-by-default deny; Phase 3 swaps in OAuth2/OIDC. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- Bean Validation (jakarta.validation) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Persistence. No entities yet; wired in the phase that introduces the first one. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+            Schema migrations.
+
+            `flyway-core` alone is the library; it is not wired to Spring. Boot 4 split its
+            autoconfigurations into one module per technology, so the code that reads
+            `spring.flyway.*` and runs migrations at startup lives in `spring-boot-flyway`.
+
+            Without it, `spring.flyway.enabled: true` is a property nothing reads: the
+            application starts happily and the migration never runs. That failed silently
+            here until a repository hit a table that did not exist.
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- Operational endpoints -->
+        <!--
+            SESSIONS THAT SURVIVE A RESTART.
+
+            Without this, HttpSession lives in Tomcat's memory: every restart of the API
+            signs every customer out, and reloading any page then lands them on the sign-in
+            form with no explanation. That was reported as "reloading signs me out", and it
+            was exactly right — the session really had gone.
+
+            It is not only a development annoyance. Two instances behind a load balancer
+            cannot share an in-memory session either, so this is what makes more than one
+            node possible at all; and a deploy would otherwise sign out every customer
+            mid-payment.
+
+            JDBC rather than Redis: the service already owns a PostgreSQL database and a
+            Flyway pipeline, and adding a second piece of infrastructure to hold sessions
+            is a second thing to run, secure and back up. See V21 for the schema.
+
+            THE STARTER, NOT `spring-session-jdbc` ON ITS OWN, and this cost an hour to
+            find. Spring Boot 4 split spring-boot-autoconfigure into one module per
+            technology (spring-boot-flyway, spring-boot-jdbc, spring-boot-mail, and so on),
+            so the session auto-configuration no longer ships in the core jar. Declaring
+            spring-session-jdbc alone puts the library on the classpath with NOTHING
+            configuring it: the application starts cleanly, logs nothing, and keeps using
+            Tomcat's in-memory sessions. The only visible symptom is that the cookie is
+            still JSESSIONID rather than SESSION.
+
+            That is a silent no-op, which is the worst shape a fix can have — it would have
+            shipped looking done, and the bug it was meant to fix would have come back as
+            "we thought we fixed that". SessionsSurviveARestartTest is what proves it is
+            actually wired, by asserting against the session store rather than against the
+            absence of an error.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-session-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!--
+            Outbound email: registration verification codes, and the approval and
+            rejection notices.
+
+            Adding the starter does NOT make the service send anything. Sending is off
+            until ibanking.mail.enabled is true AND credentials are present, so the
+            service boots and every other endpoint works on a machine with no SMTP
+            configured. A banking API that refuses to start because a mail password is
+            missing fails a deployment for the wrong reason.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Drivers -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+            Spring Boot 4 split the old monolithic test-autoconfigure module into
+            per-technology slices. MockMvc support (@AutoConfigureMockMvc, @WebMvcTest)
+            lives here rather than in spring-boot-starter-test.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <!--
+                Fails the build with a readable message when the JDK is too old, instead of
+                javac's "error: release version N not supported", which says nothing about
+                what to install or which JDK Maven actually picked up.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,)</version>
+                                    <message>
+This project requires JDK 17 or newer (Spring Boot 4.1 baseline).
+
+Maven is currently running on the JDK shown as "Detected JDK" above.
+
+  macOS: check what you have with   /usr/libexec/java_home -V
+         install one with           brew install --cask temurin@21
+         then point Maven at it     export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+
+Note: /usr/libexec/java_home -v 21 falls back to your newest installed JDK rather than
+failing when 21 is absent, so confirm with `java -version` after setting JAVA_HOME.
+                                    </message>
+                                </requireJavaVersion>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

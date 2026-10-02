@@ -1,0 +1,148 @@
+
+=============================== WHERE THINGS STAND ===============================
+ registered, no account | awaiting approval | active | never signed in | rejected 
+------------------------+-------------------+--------+-----------------+----------
+                      0 |                 0 |      2 |               0 |        0
+(1 row)
+
+
+=============================== REGISTRATIONS ====================================
+  reference   |  status  | name (from the bank) |         email          | email ok |  registered  
+--------------+----------+----------------------+------------------------+----------+--------------
+ REG-754A052A | APPROVED | Teta Eliana          | tetaciara616@gmail.com | t        | 30 Sep 07:20
+ REG-FDE548FD | APPROVED | Ciara Teta MUZORA    | ciaramuzora@gmail.com  | t        | 28 Sep 14:52
+(2 rows)
+
+
+=============================== CUSTOMERS ========================================
+(must_change = the temporary password has not been replaced yet)
+  number   |       name        |         email          | status | must_change |       created by       |       approved by        
+-----------+-------------------+------------------------+--------+-------------+------------------------+--------------------------
+ ZG3100002 | Teta Eliana       | tetaciara616@gmail.com | ACTIVE | f           | Jean Claude Nkurunziza | Immaculee Mukandayisenga
+ ZG3100001 | Ciara Teta MUZORA | ciaramuzora@gmail.com  | ACTIVE | f           | Jean Claude Nkurunziza | Immaculee Mukandayisenga
+(2 rows)
+
+
+=============================== SIGN-INS =========================================
+  number   |       name        |  signed in   |      from      
+-----------+-------------------+--------------+----------------
+ ZG3100001 | Ciara Teta MUZORA | 30 Sep 13:07 | Kigali, Rwanda
+ ZG3100002 | Teta Eliana       | 30 Sep 13:03 | Kigali, Rwanda
+ ZG3100002 | Teta Eliana       | 30 Sep 10:57 | Kigali, Rwanda
+ ZG3100001 | Ciara Teta MUZORA | 30 Sep 10:44 | Kigali, Rwanda
+ ZG3100001 | Ciara Teta MUZORA | 30 Sep 10:21 | Kigali, Rwanda
+ ZG3100002 | Teta Eliana       | 30 Sep 10:19 | Kigali, Rwanda
+ ZG3100002 | Teta Eliana       | 30 Sep 10:18 | Kigali, Rwanda
+ ZG3100002 | Teta Eliana       | 30 Sep 09:11 | Kigali, Rwanda
+ ZG3100001 | Ciara Teta MUZORA | 30 Sep 09:00 | Kigali, Rwanda
+ ZG3100001 | Ciara Teta MUZORA | 30 Sep 08:46 | Kigali, Rwanda
+(10 rows)
+
+
+=============================== ACCOUNTS AND BALANCES ============================
+(RWF has no minor unit, so balance_minor IS the number of francs)
+  account  |  type   | ccy | balance  |      held by      |   kind   | state 
+-----------+---------+-----+----------+-------------------+----------+-------
+ **** 8902 | SAVINGS | RWF |   230000 | Teta Eliana       | personal | 
+ **** 8901 | CURRENT | RWF | 11988000 | Teta Eliana       | personal | 
+ **** 7898 | SAVINGS | RWF |   800000 | Ciara Teta MUZORA | personal | 
+ **** 7890 | CURRENT | RWF |  8970000 | Ciara Teta MUZORA | personal | 
+(4 rows)
+
+
+=============================== TRANSFERS ========================================
+(PENDING_APPROVAL means the sender is ALREADY debited and a manager has not decided)
+     sent     |   from    |    to     | amount | ccy |      status      | decided by | reason 
+--------------+-----------+-----------+--------+-----+------------------+------------+--------
+ 30 Sep 09:12 | **** 8901 | **** 7890 |  12000 | RWF | PENDING_APPROVAL | —          | 
+ 29 Sep 14:39 | **** 7890 | **** 7898 |  10000 | RWF | PENDING_APPROVAL | —          | 
+ 29 Sep 14:06 | **** 7890 | **** 7898 |  20000 | RWF | PENDING_APPROVAL | —          | 
+(3 rows)
+
+
+=============================== DOES THE MONEY ADD UP? ===========================
+in_accounts + in_flight must not change when a transfer is approved or refused.
+While one is pending the money has left the sender and arrived nowhere, so the
+accounts alone are SHORT by in_flight. There is no suspense account yet.
+ in_accounts | in_flight |  total   
+-------------+-----------+----------
+    21988000 |     42000 | 22030000
+(1 row)
+
+
+=============================== LAST LEDGER ENTRIES =============================
+(the balance is the SUM of these and nothing else)
+      at      |  account  |  dir   |  amount  | balance after |                description                
+--------------+-----------+--------+----------+---------------+-------------------------------------------
+ 30 Sep 09:12 | **** 8901 | DEBIT  |    12000 |      11988000 | Transfer to **** 7890 — awaiting approval
+ 30 Sep 07:21 | **** 8902 | CREDIT |   230000 |        230000 | Opening balance
+ 30 Sep 07:21 | **** 8901 | CREDIT | 12000000 |      12000000 | Opening balance
+ 29 Sep 14:39 | **** 7890 | DEBIT  |    10000 |       8970000 | Transfer to **** 7898 — awaiting approval
+ 29 Sep 14:06 | **** 7890 | DEBIT  |    20000 |       8980000 | Transfer to **** 7898 — awaiting approval
+ 28 Sep 14:53 | **** 7898 | CREDIT |   800000 |        800000 | Opening balance
+ 28 Sep 14:53 | **** 7890 | CREDIT |  9000000 |       9000000 | Opening balance
+(7 rows)
+
+
+=============================== RECENT MESSAGES ==================================
+(delivered = false means mail is off, or the send failed)
+        kind        |           to           |           subject            | sent |      at      
+--------------------+------------------------+------------------------------+------+--------------
+ EMAIL_VERIFICATION | ciaramuzora@gmail.com  | Your Zigama CSS sign-in code | t    | 30 Sep 13:03
+ EMAIL_VERIFICATION | tetaciara616@gmail.com | Your Zigama CSS sign-in code | t    | 30 Sep 13:03
+ EMAIL_VERIFICATION | tetaciara616@gmail.com | Your Zigama CSS sign-in code | t    | 30 Sep 10:57
+ EMAIL_VERIFICATION | ciaramuzora@gmail.com  | Your Zigama CSS sign-in code | t    | 30 Sep 10:43
+ EMAIL_VERIFICATION | ciaramuzora@gmail.com  | Your Zigama CSS sign-in code | t    | 30 Sep 10:21
+ EMAIL_VERIFICATION | tetaciara616@gmail.com | Your Zigama CSS sign-in code | t    | 30 Sep 10:18
+ EMAIL_VERIFICATION | tetaciara616@gmail.com | Your Zigama CSS sign-in code | t    | 30 Sep 10:17
+ EMAIL_VERIFICATION | tetaciara616@gmail.com | Your Zigama CSS sign-in code | t    | 30 Sep 09:11
+ EMAIL_VERIFICATION | ciaramuzora@gmail.com  | Your Zigama CSS sign-in code | t    | 30 Sep 08:59
+ EMAIL_VERIFICATION | ciaramuzora@gmail.com  | Your Zigama CSS sign-in code | t    | 30 Sep 08:46
+(10 rows)
+
+
+========================= WHY A TRANSFER IS REFUSED =============================
+
+Sending money checks three things about the FROM account, and refuses with
+"We could not find the account you are sending from." if any of them fails.
+This prints all three, per account, so a refusal names a field instead of a guess.
+
+  owner        the row must belong to the signed-in customer
+  company_id   must be EMPTY for a personal account. A company account is reached
+               through a LIVE membership and never through this column
+  removed_at   must be empty. A closed account cannot be debited
+
+HOW TO READ IT. The "From" menu offers exactly the accounts that say CAN SEND, so
+if the account you chose says CAN SEND here and the portal still refuses it, the
+account is fine and the id the form sent is not one of these — look at the
+sourceAccountId in the browser Network tab and compare it to the column below.
+     customer      |    account id the form must send     |  type   |   mask    | may money leave it? 
+-------------------+--------------------------------------+---------+-----------+---------------------
+ Ciara Teta MUZORA | 1ede9d67-3665-49ca-ba25-cc5002c17d95 | CURRENT | **** 7890 | CAN SEND
+ Ciara Teta MUZORA | f7e6088c-f1a7-44af-b76d-dc5470bc9389 | SAVINGS | **** 7898 | CAN SEND
+ Teta Eliana       | c7ee7e8f-704b-42cf-89d4-23560a3cbc70 | CURRENT | **** 8901 | CAN SEND
+ Teta Eliana       | f5ca9d2f-0a76-4d02-9816-db74042e0d87 | SAVINGS | **** 8902 | CAN SEND
+(4 rows)
+
+
+--- Company memberships (the only way a company account is reachable) -----------
+ customer | company | role | still live 
+----------+---------+------+------------
+(0 rows)
+
+
+--- Transfers recorded so far ---------------------------------------------------
+Empty means no submission has ever reached the database.
+    when     |      status      | amount | ccy |   from    |    to     | reference | refused because 
+-------------+------------------+--------+-----+-----------+-----------+-----------+-----------------
+ 09-30 09:12 | PENDING_APPROVAL |  12000 | RWF | **** 8901 | **** 7890 | me        | -
+ 09-29 14:39 | PENDING_APPROVAL |  10000 | RWF | **** 7890 | **** 7898 | Me        | -
+ 09-29 14:06 | PENDING_APPROVAL |  20000 | RWF | **** 7890 | **** 7898 | Me        | -
+(3 rows)
+
+
+To poke around yourself:
+
+  PGPASSWORD=ibanking_local_only psql -h localhost -p 5433 -U ibanking -d ibanking
+
+Inside psql:  \dt  lists the tables,  \d customers  describes one,  \q  quits.

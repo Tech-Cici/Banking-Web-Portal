@@ -1,0 +1,23 @@
+/*
+ * Products: beneficiaries, loans, cards, cheque books.
+ *
+ * Cards rather than tables where each item has several attributes worth reading at once
+ * (a loan, a card); tables where the job is scanning a list (payees, cheque books).
+ */
+
+.products__narrow {
+  max-width: 38rem;
+}
+
+.products__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (width <= 560px) {
+  .products__grid {
+    grid-template-columns: 1fr;
+  }
+}

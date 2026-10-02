@@ -1,0 +1,157 @@
+/*
+ * THE ACTIVITY FEED.
+ *
+ * Built to the layout of the reference design — a circular direction icon, the sentence,
+ * the timestamp under it, the signed amount hard right — in the portal's own green
+ * rather than the reference's lime. Every colour here is an existing token, so a change
+ * to the palette reaches this list too; the reference's exact hues are deliberately not
+ * copied in, because a second hard-coded green is a second green to keep in step.
+ */
+
+.feed__band + .feed__band {
+  margin-top: var(--space-5, 1.5rem);
+}
+
+/*
+ * The band label. Small, quiet and STICKY inside a scrolling log, so a customer who has
+ * scrolled into last week can still see which week they are in.
+ */
+.feed__band-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) 0;
+  background: var(--color-surface);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.feed__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed__row {
+  display: grid;
+  /*
+   * minmax(0, 1fr) on the middle column, NOT 1fr. A bare 1fr refuses to shrink below the
+   * width of its content, so one long payee name pushes the amount off the right-hand
+   * edge instead of wrapping — which is how the figure disappears on a phone.
+   */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  padding: var(--space-3, 0.75rem) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feed__row:last-child {
+  border-bottom: none;
+}
+
+/* ----------------------------------------------------------- the direction icon */
+
+.feed__icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  /*
+   * A SHAPE AS WELL AS A COLOUR. The arrow is the primary signal; the tint reinforces
+   * it. Colour alone fails a colour-blind reader and vanishes in a printed statement,
+   * and in-versus-out is the one thing on this row that must never be misread.
+   */
+  font-weight: 700;
+}
+
+.feed__icon--in {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.feed__icon--out {
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+/*
+ * A REFUND IS NEITHER. It is money returning because something failed, so it gets the
+ * warning tint and a loop rather than an arrow — a customer scanning the list should be
+ * able to tell a refused payment from an arrival without reading the sentence.
+ */
+.feed__icon--return {
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
+}
+
+/* ------------------------------------------------------------------ the words */
+
+.feed__main {
+  min-width: 0;
+}
+
+.feed__headline {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text);
+  /* Wraps rather than truncating: a half-shown payee name is how the wrong person gets paid. */
+  overflow-wrap: anywhere;
+}
+
+.feed__meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* ----------------------------------------------------------------- the amount */
+
+.feed__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.feed__amount {
+  margin: 0;
+  font-weight: 700;
+  /* Tabular figures so a column of amounts lines up on the decimal point. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+
+.feed__amount--in {
+  color: var(--color-success);
+}
+
+/* --------------------------------------------------------------- narrow screens */
+
+@media (max-width: 40rem) {
+  .feed__row {
+    /*
+     * The icon and the words share the first row, the amount drops beneath them. Keeping
+     * three columns at this width squeezes the sentence into a two-word ribbon.
+     */
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: var(--space-2, 0.5rem);
+  }
+
+  .feed__side {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

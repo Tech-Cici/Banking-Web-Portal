@@ -1,0 +1,237 @@
+/*
+ * Design tokens.
+ *
+ * PLACEHOLDER BRAND VALUES, now in the bank's colours. The blueprint (section 29) lists
+ * "Brand/design tokens" as an artifact still owed by the bank's UI team: exact colours,
+ * logo, typography. The greens below are Zigama CSS's green-and-white identity expressed
+ * as an accessible palette — the right family, but not the registered hex values, which
+ * only the bank's brand guidelines can supply.
+ *
+ * When those arrive, only the values in this file should change. Every colour in the
+ * application resolves through these tokens; there is no hard-coded colour in any
+ * component (the one exception is the development persona switcher, which is deliberately
+ * off-palette so it can never be mistaken for product UI).
+ *
+ * The scales themselves (spacing, radius, type) follow blueprint section 2.1 and are not
+ * placeholders.
+ */
+
+:root {
+  /* --- Spacing: 4/8/12/16/24/32/48 (blueprint 2.1) --- */
+  --space-1: 0.25rem; /*  4px */
+  --space-2: 0.5rem; /*   8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /*    16px */
+  --space-6: 1.5rem; /*  24px */
+  --space-8: 2rem; /*    32px */
+  --space-12: 3rem; /*   48px */
+
+  /* --- Radius: 8-12px cards/forms, smaller for inputs --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* --- Type: 16px body baseline, 14px supporting --- */
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Tabular figures matter: amounts in a column must align digit-for-digit. */
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  --text-xs: 0.75rem; /*  12px */
+  --text-sm: 0.875rem; /* 14px - supporting */
+  --text-base: 1rem; /*   16px - body baseline */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px */
+  --text-2xl: 1.75rem; /* 28px */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* --- Neutrals --- */
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f5f6f8;
+  --color-surface-raised: #ffffff;
+  --color-border: #d8dce3;
+  --color-border-strong: #b4bac4;
+
+  --color-text: #16191f;
+  --color-text-muted: #5b6373;
+  --color-text-inverse: #ffffff;
+
+  /* --- Brand: green and white. NO LONGER PLACEHOLDERS.
+         These are Zigama's own greens, sampled from the bank's logo: #36a148 is 83% of
+         the mark and #184d28 is the shadow behind the Z. The values that stood here
+         before (#0a5a2e / #07421f) were an accessible green invented to stand in for
+         them, and were a cooler, bluer green than the real one — the hue was wrong, not
+         the darkness.
+
+         THE CONSTRAINT THAT SHAPES EVERYTHING BELOW: the brand green is 3.31:1 against
+         white. WCAG AA asks 4.5:1 of body text, so #36a148 CANNOT carry white text and
+         cannot be a green label on a white page. Swapping it in for --color-primary
+         would have failed contrast on the header, the sidebar, every primary button and
+         the sign-in field — which is to say on every screen.
+
+         So the mark supplies two greens and they do different jobs. The shadow colour is
+         dark enough to carry text; the bright one is the identity, and is restricted to
+         things with no text in them. --color-brand below states that restriction.
+
+         Contrast, COMPUTED against the surfaces these are actually used on:
+           primary        on white            8.01:1  (AA body, AAA large)
+           primary-hover  on white            9.85:1
+           primary        on primary-subtle   7.02:1  (active nav item)
+         The figures above used to read 8.35, 11.61 and 7.6. Those were true of the
+         placeholder greens and are not true of these, which is why they are restated
+         rather than left to rot. --- */
+  --color-primary: #1f5c29;
+  --color-primary-hover: #184d28;
+  --color-primary-subtle: #eaf2ec;
+
+  /*
+   * THE BRAND GREEN, and the one token in this file that is NOT for text.
+   *
+   * #36a148 is the logo's green — the colour somebody means when they say "Zigama's
+   * colour". It is here so that the identity is actually present in the product rather
+   * than approximated by a darker relative of it.
+   *
+   * WHERE IT MAY GO: anything WCAG treats as non-text, which needs 3:1 — icons, rules,
+   * borders on a white page, chart series, the decorative pattern on the sign-in field.
+   * Also large display type, 24px or 18.66px bold and over, which is also a 3:1 bar.
+   * On white it measures 3.31:1, so it clears those and nothing more.
+   *
+   * WHERE IT MUST NOT GO, measured rather than guessed:
+   *   body text on white            3.31:1  (needs 4.5)
+   *   white text on it              3.31:1  (needs 4.5)
+   *   sidebar text (#eaf2ec) on it  2.90:1  (needs 4.5)
+   *   a border on the sidebar       2.98:1  (needs 3.0 — misses by 0.02)
+   *
+   * That last one is why the selected nav row keeps a WHITE left border rather than a
+   * brand-green one. It is two hundredths short, which no eye can judge and a checker
+   * can, and it is exactly the sort of thing that gets waved through on the grounds that
+   * it looks fine.
+   */
+  --color-brand: #36a148;
+
+  /*
+   * THE SIDEBAR, which is dark green rather than white.
+   *
+   * Named for the job rather than reused by hand at each call site: the menu needs a
+   * background, three text weights and a hover, and spelling those as "primary-hover" in
+   * a nav rule would make the next palette change break in a place nobody was looking.
+   *
+   * Every value is already in this palette. The background is the darkest green here, so
+   * it sits a shade under the header rather than merging with it, and the text is the
+   * subtle green — near-white against it, and warmer than pure white for a surface
+   * somebody looks at all day.
+   *
+   * Contrast, MEASURED rather than asserted: #eaf2ec on #184d28 is 8.64:1, #ffffff on it
+   * is 9.85:1 and the headings are 5.08:1 — all past the 4.5:1 WCAG AA asks of body
+   * text. (An earlier draft of this comment claimed 11.6 and 12.9 from memory. Both were
+   * wrong, which is the argument for computing them. The 10.18 / 11.61 / 5.99 that stood
+   * here next were right about the placeholder green and wrong about this one.)
+   *
+   * The background is now the logo's own shadow colour. It is LIGHTER than the green it
+   * replaces, which costs about 1.7 ratio points everywhere on this surface — all of it
+   * margin that was spare. Nothing on the sidebar drops below 5:1.
+   */
+  --color-sidebar: #184d28;
+  --color-sidebar-text: #eaf2ec;
+  --color-sidebar-text-strong: #ffffff;
+  /* The section headings above each group of links. Quieter, still past AA. */
+  --color-sidebar-heading: #9dc3ab;
+
+  /*
+   * HOVER AND SELECTED, as translucent white rather than as another green.
+   *
+   * The first attempt used the palette's lighter green for both. Measured against the
+   * sidebar it came to 1.39:1 — two surfaces a hair apart, so the selected page was
+   * effectively unmarked and hovering did nothing visible. White at low opacity lifts the
+   * surface by a fixed amount whatever is behind it, so it keeps working if this green
+   * ever changes, and it cannot accidentally match the background.
+   *
+   * WHY NOT MORE OPAQUE, since 3:1 is what WCAG asks of a non-text indicator. It cannot
+   * be had from this overlay: 38% reaches 3.01:1 against the sidebar and by then white
+   * text on it is 3.86:1, under the 4.5:1 body text needs. The two requirements pull
+   * opposite ways, so the 3px WHITE LEFT BORDER is what identifies the current page —
+   * 9.85:1, comfortably past 3:1 — and the fill is set as high as it can go while
+   * keeping the label readable.
+   *
+   * THE BORDER STAYS WHITE AND DOES NOT BECOME --color-brand, which is the obvious thing
+   * to try now that there is a brand green to use. #36a148 on this sidebar is 2.98:1,
+   * two hundredths under the 3:1 a non-text indicator needs. No eye can judge that and a
+   * checker can.
+   *
+   * Measured against the NEW, slightly lighter sidebar: selected 28% blends to #597f64,
+   * 2.18:1 against it with white text at 4.52:1. Hover 12% blends to #346242, a visible
+   * change under the cursor without competing with the selected row.
+   *
+   * 4.52:1 IS THIN — it was 5.11:1 on the old darker green, and it is the one figure in
+   * this file with almost no margin. Every opacity from 18% to 28% passes, so 28% is kept
+   * for the strongest surface cue; if the sidebar is ever lightened again this is the
+   * value that fails first, and the answer then is to lower the opacity rather than to
+   * accept a 4.3.
+   */
+  --color-sidebar-raised: rgb(255 255 255 / 12%);
+  --color-sidebar-selected: rgb(255 255 255 / 28%);
+
+  /* Sits OUTSIDE the focused element (see reset.css `outline-offset`), so it is measured
+     against the page surface rather than against a green button — 9.85:1 on white. A
+     ring drawn on top of the brand colour would be green-on-green and invisible, and
+     --color-brand itself would be 3.31:1 here: enough for a non-text indicator, and not
+     enough to be the one thing a keyboard user has to find. */
+  --color-focus: #184d28;
+
+  /* --- Semantic status.
+         Never the sole signal: always paired with an icon and text (blueprint section
+         23). That rule carries more weight now than it did with a blue brand — with a
+         GREEN brand, green can no longer mean "success" by itself, because green is
+         also simply what the product looks like. Success is distinguished by the tick
+         and the word; the colour is reinforcement, not the message.
+
+         THE OLD WORDING CLAIMED success was "a brighter, lighter green than the
+         brand's". That was true of the placeholder palette and is no longer true of
+         anything: #15803d is 1.52:1 against --color-brand and 1.60:1 against
+         --color-primary, which is to say all three are within a hair of each other in
+         lightness. There is no version of this where a green brand leaves success a
+         distinct green, so the tick and the word are not a belt-and-braces nicety here
+         — they are the whole signal.
+
+         Info stays blue on purpose. It is the one status that has no green reading, and
+         keeping it blue stops every tinted panel in the app collapsing into one hue. --- */
+  --color-success: #15803d;
+  /* Lighter than it looks like it needs to be, on purpose: success text on this tint
+     measures 4.68:1, and the alternative — darkening the green — would push success
+     towards the brand colour and blur the two. Keep the green bright, lift the tint. */
+  --color-success-subtle: #ecfbef;
+  --color-warning: #8a5a00;
+  --color-warning-subtle: #fdf3e0;
+  --color-error: #a81f1f;
+  --color-error-subtle: #fbeaea;
+  --color-info: #17548a;
+  --color-info-subtle: #e9f1f8;
+
+  /* --- Elevation --- */
+  --shadow-sm: 0 1px 2px rgb(22 25 31 / 8%);
+  --shadow-md: 0 2px 8px rgb(22 25 31 / 10%);
+
+  /* --- Layout --- */
+  --content-max-width: 1440px;
+  --sidebar-width: 260px;
+  --header-height: 64px;
+
+  /* --- Motion. Restrained by design (blueprint 2.1). --- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --easing: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+/* Respect the OS reduced-motion setting. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

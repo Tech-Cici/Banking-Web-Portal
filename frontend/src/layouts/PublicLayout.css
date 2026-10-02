@@ -1,0 +1,165 @@
+/*
+ * THE PRE-SIGN-IN SHELL: a green field with a white card floating on it.
+ *
+ * Built to the reference design the bank supplied, with every colour taken from the
+ * palette already in tokens.css. The reference's navy is not copied in — a second brand
+ * colour is a second one to keep in step with the first, and this portal's colour is
+ * green.
+ *
+ * THE FIELD, THE CARD, THE PILL FIELDS AND THE ROUND SUBMIT NOW LIVE IN
+ * styles/brand.css, because the landing page and the registration flows use the same
+ * shapes. What is left here is only this shell's own geometry: where the two columns sit,
+ * and how they stack on a phone. The gradient's contrast is measured once, in that file.
+ */
+
+.public-layout {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 100vh;
+  /* dvh so the phone browser's collapsing toolbar does not leave a white strip. */
+  min-height: 100dvh;
+  padding: var(--space-6);
+}
+
+/* ------------------------------------------------------------------ the two columns */
+
+.public-layout__main {
+  display: grid;
+  align-items: center;
+  /*
+   * The pitch takes what is left; the card column is capped so it never stretches into a
+   * letterbox on a wide monitor. `minmax(0, …)` because a bare track minimum is
+   * min-content, which a long error message inside the card would push wider than the
+   * column — the bug that bent the signed-in header out of shape once already.
+   */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  gap: var(--space-12);
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-4);
+}
+
+/* Second column, though it comes first in the markup. */
+.public-layout__stage {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  width: 100%;
+  max-width: 27rem;
+}
+
+.public-layout__pitch {
+  grid-column: 1;
+  grid-row: 1;
+  max-width: 32rem;
+}
+
+/* A clear gap under the headline, so the pill is not read as part of the last line. */
+.public-layout__pitch .brand-field__action {
+  margin-top: var(--space-8);
+}
+
+/* ------------------------------------------------------------------ the card */
+
+.public-layout__brand {
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+/*
+ * The wordmark is a link, but it must not look like a body-copy link — underlined blue
+ * bank branding reads as a mistake. So it keeps the mark's appearance and shows its
+ * interactivity on hover and focus instead.
+ */
+.public-layout__wordmark {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.public-layout__wordmark:hover .public-layout__name,
+.public-layout__wordmark:focus-visible .public-layout__name {
+  text-decoration: underline;
+}
+
+.public-layout__name {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+.public-layout__service {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+@media (width < 900px) {
+  .public-layout {
+    padding: var(--space-4);
+  }
+
+  .public-layout__main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    padding: var(--space-4) 0;
+  }
+
+  /*
+   * ONE COLUMN, CARD FIRST. The headline is the reason somebody stays; the form is the
+   * reason they came. Pushing a sign-in field below a 2.75rem tagline on a phone is how
+   * a customer concludes the page has not finished loading.
+   */
+  .public-layout__stage {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .public-layout__pitch {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: none;
+    text-align: center;
+  }
+}
+
+/* ------------------------------------------------------------------ the rest */
+
+/*
+ * Outside the card, not inside it.
+ *
+ * Inside, it sits among the sign-in controls and competes with the button somebody is
+ * actually looking for. Out here it reads as what it is: the way off this page. It is on
+ * the green, so it takes the field's text colour rather than the link blue.
+ */
+.public-layout__back {
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.public-layout__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  max-width: var(--content-max-width);
+  margin-inline: auto;
+  padding-top: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-sidebar-text);
+}
+
+.public-layout__footer p {
+  margin: 0;
+}
+
+@media (width < 600px) {
+  .public-layout__footer {
+    justify-content: center;
+    text-align: center;
+  }
+}

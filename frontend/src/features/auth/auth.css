@@ -1,0 +1,73 @@
+/*
+ * The pages inside the sign-in card.
+ *
+ * The card itself, the pill fields and the round submit button are the shared `.brand-*`
+ * shapes in styles/brand.css, which the landing page and the registration flows use too.
+ * What is left here is what each individual sign-in screen puts inside the card.
+ */
+
+.auth__title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xl);
+  text-align: center;
+}
+
+.auth__lead {
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/*
+ * CENTRED AND STACKED, not a row with a rule above it.
+ *
+ * The row put "Forgot your password?" and "Register" at opposite ends of a line under a
+ * horizontal rule, which read as a footer to the card — two equal afterthoughts. In the
+ * design the bank supplied there is a single centred link under the field, and that is
+ * the right emphasis: the person who cannot get in needs one obvious next step, and
+ * registering is a different errand.
+ */
+.auth__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-6);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.auth__links-primary {
+  font-size: var(--text-base);
+}
+
+/*
+ * `.brand-go` — the slot holding the arrow that submits the form, inside the password
+ * field. It is styled in styles/brand.css rather than here, beside the field it has to
+ * line up with: a 40px circle inside a 52px pill only looks centred if the two numbers
+ * are read together. Its position comes from the shared `.ui-input__adornment`.
+ */
+
+/*
+ * A notice BELOW the form, not inside it.
+ *
+ * The forgotten-password screen explains what happens next under its button, and `.ui-alert`
+ * carries no margin of its own — so it sat flush against the button and read as part of it.
+ */
+.auth__title ~ form + .ui-alert,
+.auth__title ~ .ui-alert {
+  margin-top: var(--space-6);
+}
+
+/*
+ * The quiet note under the code form, telling the customer this browser will be
+ * remembered. Small, but not hidden: it is a security-relevant fact about what is about
+ * to happen, and somebody on a shared machine has to be able to read it.
+ */
+.auth__note {
+  margin: var(--space-4, 1rem) 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}

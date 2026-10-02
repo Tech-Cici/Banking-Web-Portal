@@ -1,0 +1,84 @@
+@import './tokens.css';
+@import './reset.css';
+/*
+ * The bank's two shapes — the green field and the white card on it — used by the sign-in
+ * screens, the landing page and the registration flows. Imported here rather than by
+ * each page so there is one definition of a gradient whose contrast has been measured.
+ */
+@import './brand.css';
+
+/* Screen-reader-only text. Used for status words that must accompany colour. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link: first focusable element, revealed on focus. */
+/*
+ * SCROLL PADDING FOR THE STICKY HEADER.
+ *
+ * Every authenticated screen now has a header pinned to the top of the viewport, and
+ * anything the browser scrolls to — an in-page anchor, a field a form scrolled to
+ * report an error on, the target of the skip link — would otherwise come to rest flush
+ * against the top of the window and therefore underneath it. The customer is shown the
+ * chrome instead of the thing they were sent to look at.
+ *
+ * Set on the scroll container rather than per element, so it applies to every jump
+ * without each one having to remember. The public and marketing shells have no sticky
+ * header; a header's worth of breathing room above a scroll target is no loss there.
+ */
+html {
+  scroll-padding-top: calc(var(--header-height) + var(--space-4));
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-inverse);
+  background-color: var(--color-primary);
+  border-radius: var(--radius-md);
+  transform: translateY(-200%);
+  transition: transform var(--duration-fast) var(--easing);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Amounts and account numbers use tabular figures so columns align. */
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Links.
+ *
+ * There was no rule for these until the brand went green, and nobody noticed: the
+ * browser's default link blue happened to sit close to the old blue brand. On a green
+ * portal it reads as a foreign colour, so links now take the brand green.
+ *
+ * The underline STAYS. A link identified only by colour is invisible to a colourblind
+ * reader and to anyone skimming, and this is a bank — "Secure your account" and "Block
+ * this card" have to look pressable. Links styled as buttons or cards
+ * (.dash__action, .money__choice, .mkt-btn, the nav) set their own colour and remove the
+ * underline in their own rules, which win over this one.
+ */
+a {
+  color: var(--color-primary);
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}

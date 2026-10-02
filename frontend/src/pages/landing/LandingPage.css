@@ -1,0 +1,423 @@
+/*
+ * Landing page.
+ *
+ * THE "NO GRADIENTS" RULE THAT USED TO OPEN THIS FILE IS GONE, and it is worth saying so
+ * rather than leaving two files disagreeing. It read: flat surfaces, one accent colour,
+ * no gradients — a banking site that looks like a startup campaign reads as less
+ * trustworthy. A sound default, and not ours to keep: the bank supplied a design with a
+ * gradient field and floating white cards, and this page now uses the same two shapes as
+ * the sign-in screen (styles/brand.css).
+ *
+ * WHAT SURVIVES FROM THAT RULE is everything underneath the colour, which was the part
+ * that mattered: no scroll animation, no motion for its own sake, and above all no
+ * invented social proof. All copy is placeholder pending the bank's content catalogue
+ * (blueprint section 29), and nothing here states a statistic, a customer count or a
+ * testimonial — inventing those on a financial site is a misrepresentation, not a design
+ * choice.
+ */
+
+.landing__section {
+  width: 100%;
+  max-width: var(--content-max-width);
+  padding: var(--space-12) var(--space-6);
+  margin: 0 auto;
+}
+
+.landing__section--tint {
+  max-width: none;
+  background-color: var(--color-surface-sunken);
+}
+
+.landing__section--tint > .landing__inner {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.landing__eyebrow {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.landing__section-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-2xl);
+}
+
+.landing__section-lead {
+  max-width: 60ch;
+  margin-bottom: var(--space-8);
+  color: var(--color-text-muted);
+}
+
+/* ---------- hero ---------- */
+
+/*
+ * The full-bleed green band. The width cap stays on the inner `.landing__section`, so the
+ * colour runs edge to edge while the content still lines up with every section below it.
+ */
+.landing__hero-band {
+  width: 100%;
+}
+
+/*
+ * ONLY THE ARC, AND PUSHED FURTHER OUT, on this band alone.
+ *
+ * Everywhere else the pattern sits in a corner with nothing in it. Here the first line of
+ * copy starts 48px from the top and 36px from the left — exactly where the dot grid and
+ * the spot are — so the three of them landed on top of the eyebrow and read as a printing
+ * fault. The arc survives because it only grazes the corner; the other two are hidden
+ * rather than deleted so that every field in the portal still renders the same markup.
+ */
+.landing__hero-band .brand-field__spot,
+.landing__hero-band .brand-field__dots {
+  display: none;
+}
+
+.landing__hero-band .brand-field__arc {
+  top: -17rem;
+  left: -16rem;
+  width: 26rem;
+  height: 26rem;
+}
+
+/*
+ * The text on the field, in the field's own colours. White for the headline, the slightly
+ * warm near-white for the body — both measured against the gradient's lightest point in
+ * styles/brand.css, where the 16% ceiling on the wash comes from.
+ */
+.landing__hero-band .landing__hero-title {
+  color: var(--color-sidebar-text-strong);
+}
+
+.landing__hero-band .landing__hero-lead,
+.landing__hero-band .landing__hero-note {
+  color: var(--color-sidebar-text);
+}
+
+.landing__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--space-12);
+  align-items: center;
+  padding-top: var(--space-12);
+  padding-bottom: var(--space-12);
+}
+
+.landing__hero-title {
+  margin-bottom: var(--space-4);
+  font-size: clamp(2rem, 1.3rem + 2.4vw, 3rem);
+  letter-spacing: -0.01em;
+}
+
+.landing__hero-lead {
+  max-width: 52ch;
+  margin-bottom: var(--space-8);
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+}
+
+.landing__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.landing__hero-note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * Illustrative account card. Figures are obviously-fake round numbers on a masked demo
+ * account, labelled as an illustration, so it cannot be mistaken for real data.
+ *
+ * The surface itself is `.brand-card` now — the same white card the sign-in form sits in,
+ * which is what makes the two pages read as one design. Only the padding is overridden:
+ * a card holding two rows does not need the eight-space inset a form does.
+ */
+.landing__hero-card {
+  padding: var(--space-6);
+}
+
+.landing__hero-card-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.landing__hero-card-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.landing__hero-card-row:last-of-type {
+  border-bottom: none;
+}
+
+.landing__hero-card-amount {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.landing__hero-card-caption {
+  margin-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ---------- card grids ---------- */
+
+.landing__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+/*
+ * Explicit column counts rather than auto-fit for these two grids.
+ *
+ * auto-fit packs as many columns as will fit, which left 8 service cards as 5 + 3 and
+ * 6 security cards as 5 + 1 on a wide screen. A single orphan card reads as a layout
+ * bug. Fixed counts divide both sets evenly: services 4 + 4, security 3 + 3.
+ */
+.landing__grid--services {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.landing__grid--security {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (width >= 1100px) {
+  .landing__grid--services {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landing__grid--security {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 620px) {
+  .landing__grid--services,
+  .landing__grid--security {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/*
+ * ROUNDED AND LIFTED RATHER THAN OUTLINED, to match the cards on the green.
+ *
+ * NOT `.brand-card` though, and the difference is the shadow. That card is built to sit
+ * on a dark field, where it takes a deep 60px shadow to separate it; the same shadow on a
+ * pale section looks like a bruise under every tile. These get the palette's own
+ * mid-elevation shadow and a smaller radius, because there are eight of them in a row and
+ * 28px corners on a 260px tile start to look like a toy.
+ */
+.landing__card {
+  padding: var(--space-6);
+  background-color: var(--color-surface);
+  border: none;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.landing__card-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-base);
+}
+
+.landing__card-text {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.landing__card-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+  /* A circle, like the step numbers below and the submit button on the sign-in card. */
+  border-radius: 50%;
+}
+
+/* ---------- two-column split ---------- */
+
+/*
+ * `min(100%, 320px)` rather than a bare 320px, and that is a bug fix rather than a
+ * flourish. A `minmax(320px, 1fr)` track NEVER shrinks below 320px, so on a 320px phone —
+ * minus the section's own 32px of padding — the two panels were 32px wider than the
+ * screen and the whole page scrolled sideways. Wrapping the minimum in `min()` lets the
+ * track fall back to the container's width when there is less than 320px to give it.
+ *
+ * Found by sweeping twelve widths from 2560px to 320px rather than by looking at it; at
+ * 360px and above it was invisible.
+ */
+.landing__split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-8);
+}
+
+.landing__panel {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8);
+  background-color: var(--color-surface);
+  border: none;
+  border-radius: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.landing__panel-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-xl);
+}
+
+.landing__panel-lead {
+  margin-bottom: var(--space-6);
+  color: var(--color-text-muted);
+}
+
+.landing__list {
+  flex: 1;
+  padding: 0;
+  margin: 0 0 var(--space-8);
+  list-style: none;
+}
+
+.landing__list li {
+  position: relative;
+  padding-left: var(--space-6);
+  font-size: var(--text-sm);
+}
+
+.landing__list li + li {
+  margin-top: var(--space-3);
+}
+
+/* Icon + text, never colour alone (blueprint section 23). */
+.landing__list li::before {
+  position: absolute;
+  left: 0;
+  font-weight: var(--weight-semibold);
+  color: var(--color-success);
+  content: '✓';
+}
+
+/* ---------- steps ---------- */
+
+.landing__steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-6);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.landing__step {
+  counter-increment: step;
+}
+
+.landing__step::before {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--space-4);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-inverse);
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  content: counter(step);
+}
+
+/* ---------- closing call to action ---------- */
+
+/*
+ * The closing band. The colour comes from `.brand-field`; this rule is only its padding
+ * and alignment. It used to set `background-color: var(--color-primary)` — a flat green
+ * at the foot of a page whose top is a gradient, which is one green too many.
+ */
+.landing__cta {
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+}
+
+.landing__cta-inner {
+  max-width: 60ch;
+  margin: 0 auto;
+}
+
+.landing__cta-title {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-2xl);
+  color: var(--color-sidebar-text-strong);
+}
+
+/*
+ * NO OPACITY ON THIS LINE. Fading text on the field blends it towards the green behind
+ * it, and over the light end of the gradient 92% white measures 4.81:1 where plain white
+ * is 5.34:1 — still passing here, but the margin is thinner than it was on the old
+ * palette, and 90% would be 4.67:1. It is the same mistake that took the sign-in page's
+ * eyebrow under AA, so the habit goes rather than the measurement being re-run every
+ * time the gradient moves.
+ */
+.landing__cta-lead {
+  margin-bottom: var(--space-8);
+  color: var(--color-sidebar-text);
+}
+
+.landing__cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+}
+
+/* ---------- responsive ---------- */
+
+@media (width <= 900px) {
+  .landing__hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+}
+
+@media (width <= 480px) {
+  .landing__section,
+  .landing__cta {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .landing__panel {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  /*
+   * Full-width actions on a small screen (blueprint section 22). Named for the brand
+   * pills, not `.mkt-btn`: the hero and the closing band use the field's own buttons now,
+   * and this rule silently stopped applying to either when they changed.
+   */
+  .landing__hero-actions .brand-field__action,
+  .landing__cta-actions .brand-field__action {
+    width: 100%;
+  }
+}

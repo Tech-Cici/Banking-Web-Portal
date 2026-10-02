@@ -1,0 +1,15 @@
+/*
+ * Corporate screens: approvals, bulk, salary.
+ */
+
+.corp__narrow {
+  max-width: 44rem;
+}
+
+.corp__reject {
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

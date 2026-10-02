@@ -1,0 +1,8 @@
+target/
+*.log
+.env
+
+# The Maven wrapper uses distributionType=only-script, so no maven-wrapper.jar is
+# committed — mvnw downloads Maven itself on first run. Keep mvnw, mvnw.cmd and
+# .mvn/wrapper/maven-wrapper.properties in version control.
+.mvn/wrapper/*.jar

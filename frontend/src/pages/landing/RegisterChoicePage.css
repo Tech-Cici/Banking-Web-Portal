@@ -1,0 +1,107 @@
+/*
+ * The three ways in, as cards on the green field — the same field and the same white
+ * card the sign-in screen uses (styles/brand.css). This page used to be a column of
+ * outlined boxes pinned to the left of a wide white page, which left a third of the
+ * screen empty and made the three options look like a list rather than a choice.
+ */
+
+.register-choice {
+  /* The band is full-bleed and the content inside it is centred and capped. */
+  display: grid;
+  align-items: center;
+  min-height: calc(100vh - var(--header-height));
+  padding: var(--space-12) var(--space-6);
+}
+
+.register-choice__inner {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.register-choice__title {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-2xl);
+  color: var(--color-sidebar-text-strong);
+}
+
+.register-choice__lead {
+  max-width: 62ch;
+  margin-bottom: var(--space-8);
+  color: var(--color-sidebar-text);
+}
+
+.register-choice__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+/*
+ * The whole card is the link target, so there is one tab stop per option rather than a
+ * redundant card plus inner link. The surface is `.brand-card`; this rule only makes it
+ * a column and strips the link styling.
+ */
+.register-choice__card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform var(--duration-fast) var(--easing),
+    box-shadow var(--duration-fast) var(--easing);
+}
+
+/*
+ * LIFTED ON HOVER, not outlined. The old rule darkened a 1px border, and there is no
+ * border left to darken — on the green it was invisible anyway. A 2px rise and a deeper
+ * shadow is the same signal without needing a colour that works on both surfaces.
+ */
+.register-choice__card:hover,
+.register-choice__card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 30px 70px rgb(0 0 0 / 28%);
+}
+
+.register-choice__card-title {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--color-primary);
+}
+
+.register-choice__card-text {
+  flex: 1;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.register-choice__meta {
+  padding-top: var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
+}
+
+.register-choice__cue {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+}
+
+/*
+ * The anti-phishing line. Kept as a tinted panel rather than plain text on the green: it
+ * is the one thing on this page a customer should read before clicking anything, and a
+ * pale block on a dark field is the strongest contrast available without shouting.
+ */
+.register-choice__help {
+  padding: var(--space-4);
+  margin-top: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background-color: var(--color-info-subtle);
+  border-left: 3px solid var(--color-info);
+  border-radius: var(--radius-md);
+}

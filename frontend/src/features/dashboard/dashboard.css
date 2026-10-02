@@ -1,0 +1,398 @@
+/*
+ * Dashboard layout.
+ *
+ * One grid shared by all three role dashboards. The panels differ per role, the frame
+ * does not — a maker and an approver signing in on the same laptop should recognise the
+ * same product.
+ *
+ * Panels flow into a responsive grid rather than fixed columns, so a role with three
+ * panels does not leave a hole where a fourth would be.
+ */
+
+/*
+ * THE DASHBOARD FILLS THE SCREEN, instead of stopping wherever its content happens to end.
+ *
+ * What it looked like before: a new customer's panels are mostly empty states, so the page
+ * finished about two thirds of the way down and left a wide band of bare background
+ * between the last row of cards and the footer. Nothing was broken, and it read as
+ * unfinished — the eye reads a page that stops early as a page that failed to load the
+ * rest.
+ *
+ * The fix is a column that claims the full height of the main area, with the LAST row
+ * allowed to grow into whatever is left over (`.dash__section--fills`). A row of three
+ * taller cards reads as deliberate; a short row above 200px of nothing does not.
+ *
+ * WHY NOT STRETCH EVERY ROW. The rows above hold the things that are actually read — the
+ * balances, the activity feed — and stretching them would push the figures apart and put
+ * air in the middle of the information rather than at the end of the page. Only the tail
+ * grows.
+ *
+ * WHY `min-height` AND NOT `height`. On a short window, or for a customer with real
+ * activity, the content is taller than the viewport and must be free to overflow and
+ * scroll. `height` would cap it and scroll the panels internally instead.
+ */
+.dash {
+  display: flex;
+  flex-direction: column;
+  /*
+   * The main area is a grid track; `100%` of it is the height it was given, which is at
+   * least the viewport minus the header and footer. Falling back to `auto` costs nothing
+   * where the content is taller.
+   */
+  min-height: 100%;
+}
+
+/*
+ * The row that absorbs the slack. `flex: 1` takes the leftover height; `min-height: 0` is
+ * the usual flex-child guard so a tall panel inside can still shrink rather than forcing
+ * the column past its bounds.
+ */
+.dash__section--fills {
+  flex: 1 1 auto;
+  /* The usual flex-child guard, so a tall panel can shrink instead of forcing the column
+     past its bounds. */
+  min-height: 0;
+  /*
+   * And the panels have to actually grow rather than sit at their natural height in a
+   * taller cell. `align-items: start` on `.dash__grid` is what keeps the OTHER rows tidy,
+   * so it is overridden only here.
+   */
+  align-items: stretch;
+}
+
+.dash__section--fills > * {
+  height: 100%;
+}
+
+/*
+ * AND THE CONTENT SITS IN THE MIDDLE OF THE TALLER CARD.
+ *
+ * Growing the cards fixed the band of empty background below them and moved the problem
+ * inside: one grey sentence pinned to the top of a 190px card, with the space underneath
+ * it, reads as a card that failed to finish loading. Centred, it reads as a card with
+ * little to say — which is the truth for a new customer, and is what the panel is for.
+ *
+ * It is a no-op the moment there is real content: a body taller than the space has nothing
+ * to centre.
+ */
+.dash__section--fills .ui-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash__section--fills .ui-panel__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dash__head {
+  margin-bottom: var(--space-6);
+}
+
+.dash__title {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+
+.dash__role {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+.dash__role-note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.dash__signin {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * 19rem, NOT 22rem, and the difference is a whole column.
+ *
+ * A 22rem (352px) minimum needs 728px of content width for two panels once the 24px gap
+ * is counted. On a 1280px laptop the sidebar left 1020px, which was fine — but on a
+ * narrower laptop, and in the whole band just above the sidebar breakpoint, it landed a
+ * few pixels short and quietly dropped to one column. At 1025px the customer got 717px
+ * of content and a single stack of panels, having had two columns one pixel earlier.
+ *
+ * 19rem (304px) needs 632px, which clears every width from a small tablet upward. A
+ * panel that narrow still holds what these panels hold: a balance at 22px, a masked
+ * account number, a row of actions that wrap on their own.
+ */
+.dash__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* A panel that should never be squeezed next to another one. */
+.dash__grid--wide {
+  grid-template-columns: 1fr;
+}
+
+.dash__section + .dash__section {
+  margin-top: var(--space-6);
+}
+
+/* ---------------------------------------------------------------- accounts */
+
+.dash__accounts {
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.dash__account {
+  padding: var(--space-4);
+  /*
+   * Tinted a shade DOWN from the panel, not up.
+   *
+   * The panel behind these is already white, so giving the cards a white fill and a
+   * shadow would separate them from nothing. Sinking them slightly is what makes them
+   * read as a set of distinct accounts rather than one bordered list — and it is the
+   * same relationship the rest of the app uses between a surface and the things resting
+   * in it.
+   */
+  background-color: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dash__account-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.dash__account-name {
+  font-weight: var(--weight-medium);
+}
+
+.dash__account-number {
+  margin-left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.dash__balance {
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__balance-label,
+.dash__account-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dash__account-meta {
+  margin-top: var(--space-1);
+}
+
+/* ---------------------------------------------------------------- rows */
+
+.dash__rows {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.dash__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dash__row:last-child {
+  border-bottom: none;
+}
+
+/*
+ * THE AMOUNT STAYS ON THE SAME LINE AS WHAT IT WAS FOR.
+ *
+ * At 14rem with a 12rem floor, the description claimed the whole width of a panel in a
+ * two-column dashboard and pushed the amount onto a line of its own — so a statement
+ * read as a list of descriptions with numbers loose underneath, and nothing lined up
+ * down the right-hand edge. A column of right-aligned figures is how anybody reads
+ * money.
+ *
+ * 8rem lets the description wrap instead, which is the right thing to give up: a long
+ * merchant name over two lines still reads fine next to its amount.
+ */
+.dash__row-main {
+  min-width: 8rem;
+  flex: 1 1 10rem;
+}
+
+.dash__row-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.dash__row-meta {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dash__row-side {
+  text-align: right;
+}
+
+.dash__amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash__amount--credit {
+  color: var(--color-success);
+}
+
+.dash__amount--withheld {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------- actions */
+
+.dash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.dash__action {
+  display: block;
+  flex: 1 1 10rem;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  text-align: center;
+  text-decoration: none;
+  background-color: var(--color-primary-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition:
+    color var(--duration-fast) var(--easing),
+    background-color var(--duration-fast) var(--easing),
+    border-color var(--duration-fast) var(--easing),
+    box-shadow var(--duration-fast) var(--easing);
+}
+
+.dash__action:hover {
+  color: var(--color-primary-hover);
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.dash__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------- company switcher */
+
+.dash__company {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-6);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dash__company-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.dash__company-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dash__company-btn {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.dash__company-btn[aria-pressed='true'] {
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  background-color: var(--color-primary-subtle);
+  border-color: var(--color-primary);
+}
+
+/*
+ * The selected company is disabled — there is nothing to switch to — but it must not
+ * LOOK disabled, or the greyed-out button reads as the one that is off.
+ */
+.dash__company-btn[aria-pressed='true']:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.dash__company-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------- misc */
+
+.dash__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.dash__unread {
+  font-weight: var(--weight-semibold);
+}
+
+/*
+ * One column below 480px, with a ZERO minimum.
+ *
+ * Needed because 19rem (304px) is wider than the content area of a 320px phone, and a
+ * grid track wider than its container does not clip — it pushes the whole page sideways.
+ * `minmax(0, 1fr)` rather than a bare `1fr` for the same reason the shell's own tracks
+ * use it (AppLayout.css): `1fr` has an automatic min-content minimum and will grow.
+ */
+@media (width <= 480px) {
+  .dash__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
