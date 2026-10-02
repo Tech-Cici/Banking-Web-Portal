@@ -216,6 +216,35 @@ ibanking:
     # an hour in which a forwarded email is still a working credential.
     code-validity: ${MAIL_CODE_VALIDITY:PT10M}
 
+    # BREVO: SEND OVER HTTPS INSTEAD OF SMTP.
+    #
+    # Why this exists: some hosts do not allow outbound traffic to SMTP ports at all.
+    # Render's free web services are one — a connection to smtp.gmail.com:587 cannot leave
+    # the container, whatever the credentials, and every verification code is recorded
+    # undelivered. Brevo's transactional endpoint is ordinary HTTPS on 443.
+    #
+    # Note that Brevo ALSO offers an SMTP relay, and that would be blocked exactly as
+    # Gmail's is. This is the HTTP API, which is a different thing despite the endpoint
+    # path containing the word "smtp".
+    #
+    # With this true, every spring.mail.* setting above is ignored.
+    #
+    # BEFORE IT WORKS: the address in `from` above must be a verified sender in the Brevo
+    # account (Senders, domains & dedicated IPs). Brevo answers 400 for an unverified
+    # sender, which reads like a malformed request rather than a permission problem.
+    brevo:
+      enabled: ${BREVO_ENABLED:false}
+
+      # Sent in the `api-key` header. A SECRET: it can send mail as this account to
+      # anyone. Supplied through the environment, never committed, never logged — the
+      # code only ever asks whether it is blank.
+      api-key: ${BREVO_API_KEY:}
+
+      # A customer is watching a spinner while this call is in flight, so it is short.
+      # A send that has not answered by now is better recorded as failed: the outbox keeps
+      # the body, so the code is still readable from the staff message log.
+      timeout: ${BREVO_TIMEOUT:PT10S}
+
   cors:
     # Exact origins only. Populated per environment; see application-dev.yml.
     allowed-origins: []

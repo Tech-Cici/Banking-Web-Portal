@@ -62,26 +62,45 @@ services:
       - key: BOOTSTRAP_MANAGER_PASSWORD
         sync: false
 
-      # ---- mail. DELIBERATELY `sync: false` rather than defaulting to either value,
-      # because both choices cost something and the choice should be made knowingly.
+      # ---- mail, OVER HTTPS AND NOT SMTP, and that is forced rather than preferred.
       #
-      #   true  — needs MAIL_USERNAME and a Google App Password below. Verification codes
-      #           and temporary passwords arrive by email and the demo works unassisted.
-      #           With it true and the credentials blank, every send fails: the message is
-      #           still recorded (undelivered, body intact) so the flow is still walkable,
-      #           but the log fills with errors and nobody receives anything.
-      #   false — nothing is sent. Every message is recorded instead and read from
-      #           /staff/developer-tools, which needs VITE_ENABLE_DEV_TOOLS=true on the
-      #           Vercel side. Works on day one with no mail account at all; whoever is
-      #           trying the portal has to be handed their code by somebody.
+      # RENDER'S FREE WEB SERVICES DO NOT ALLOW OUTBOUND TRAFFIC TO SMTP PORTS. This was
+      # found the hard way: with MAIL_HOST=smtp.gmail.com and a valid 16-character App
+      # Password, the first registration on this deployment recorded
+      #
+      #     EMAIL_VERIFICATION | delivered: f
+      #     failure: The mail server rejected or could not be reached.
+      #
+      # No credential could have fixed that — the connection never left the container.
+      # Brevo's transactional endpoint is ordinary HTTPS on 443, which is not blocked.
+      #
+      # Note that Brevo ALSO offers an SMTP relay on 587. That would be blocked exactly as
+      # Gmail's is. BREVO_ENABLED selects the HTTP API, which is a different thing despite
+      # the endpoint path containing the word "smtp".
+      #
+      # The spring.mail.* settings are deliberately absent below: with BREVO_ENABLED true
+      # they are ignored entirely, and leaving them would invite somebody to spend an hour
+      # on an App Password that is never read.
       - key: MAIL_ENABLED
+        value: "true"
+      - key: BREVO_ENABLED
+        value: "true"
+
+      # The xkeysib-… key from app.brevo.com → SMTP & API → API keys. A SECRET: it can send
+      # mail as that account to anyone.
+      - key: BREVO_API_KEY
         sync: false
-      - key: MAIL_HOST
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: "587"
-      - key: MAIL_USERNAME
+
+      # ---- the From address customers see.
+      #
+      # BREVO REFUSES ANY SENDER IT HAS NOT VERIFIED, and answers 400 — which reads like a
+      # malformed request rather than a permission problem. Add this exact address under
+      # Senders, domains & dedicated IPs in Brevo and confirm the email it sends you, BEFORE
+      # the first registration.
+      #
+      # A consumer mailbox cannot carry the bank's SPF, DKIM or DMARC records, so this is a
+      # demonstration value: production needs an address on a domain the bank controls.
+      - key: MAIL_FROM
         sync: false
-      # A Google App Password, not the account password.
-      - key: MAIL_PASSWORD
-        sync: false
+      - key: MAIL_FROM_NAME
+        value: Zigama CSS

@@ -1302,3 +1302,50 @@ endpoint's maximum. A customer with more than fifty movements cannot reach the o
 from that screen — the per-account statement pages the rest, this one does not. It needs
 either a paged endpoint across every account or a "show older" control driving the
 existing per-account paging.
+
+## Email goes over Brevo's HTTP API, because the host blocks SMTP
+
+**Render's free web services do not allow outbound traffic to SMTP ports.** This was found
+on the first registration against the demonstration deployment, not by reading the docs: with
+`MAIL_HOST=smtp.gmail.com` and a valid 16-character Google App Password, the outbox row read
+
+```
+EMAIL_VERIFICATION | ciaramuzora@gmail.com | delivered: f
+failure: The mail server rejected or could not be reached.
+```
+
+No credential could have fixed that. The connection never left the container.
+
+So `Mailer` no longer speaks to `JavaMailSender` directly. There is a `MailTransport`
+interface with two implementations — `SmtpMailTransport` and `BrevoMailTransport` — chosen at
+startup by `ibanking.mail.brevo.enabled`. Everything that made `Mailer` careful stayed in
+`Mailer`: every message is still recorded whether or not it left, `delivered` still separates
+"composed" from "sent", and a send failure still never rolls back the business decision that
+triggered it.
+
+**Brevo also sells an SMTP relay, and that would be blocked exactly as Gmail's is.** The
+endpoint path is `/v3/smtp/email` but the transport is HTTPS on 443. Worth stating plainly
+because the obvious reading of "use Brevo" is to change `MAIL_HOST` and achieve nothing.
+
+### What is still owed here
+
+- **The sender is a consumer mailbox.** SPF, DKIM and DMARC for `gmail.com` belong to
+  Google, so this bank's mail cannot be cryptographically attributed to this bank. Every
+  receiver has to treat it as unauthenticated mail claiming to be from a bank — which is
+  what a phishing run looks like. Production needs an address on a domain Zigama controls,
+  with the DNS records to match. `MailStartupCheck` warns about this on every boot.
+- **Brevo must have the sender verified** or it answers 400. That is a manual step in
+  someone's Brevo account, which means the deployment has a dependency that is not in any
+  file here.
+- **300 emails a day** on the free plan. Fine for a demonstration, not a number any real
+  bank can run on.
+- **A failed send is never retried.** Deliberate — the outbox keeps the body, so the code
+  is still readable from the staff message log, and retrying inside a request the customer
+  is waiting on risks sending twice. But nothing sweeps the outbox for undelivered rows and
+  tries again later, so a provider outage means those customers were simply not told. A
+  real deployment wants that sweep.
+- **Nothing tests against Brevo itself.** `BrevoMailTransportTest` runs against a stub HTTP
+  server on a loopback port, which proves the header name, the payload shape and the
+  handling of each status code are what Brevo's documentation describes. If Brevo changes
+  its contract those tests keep passing and the deployment breaks. That is the honest limit
+  of testing against a stub.

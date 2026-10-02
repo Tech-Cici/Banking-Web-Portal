@@ -1,13 +1,7 @@
 package rw.bank.ibanking.onboarding.service;
 
-import jakarta.mail.internet.MimeMessage;
-import java.io.UnsupportedEncodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.mail.MailException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +21,7 @@ import rw.bank.ibanking.onboarding.repo.OutboxRepository;
  * ready.
  *
  * <p><b>A send failure never fails the caller's work.</b> If a manager approves an account
- * and Gmail is unreachable, the approval still stands — it is a decision about a customer's
+ * and the email provider is unreachable, the approval still stands — it is a decision about a customer's
  * account, not an email. Rolling it back because SMTP blinked would mean the customer's
  * account silently reverts to pending and the manager believes they released it. So the
  * failure is recorded and surfaced, and the business decision holds.
@@ -45,22 +39,20 @@ public class Mailer {
     private final OutboxRepository outbox;
 
     /**
-     * Obtained lazily.
+     * Whatever actually carries a message out — SMTP, or Brevo's HTTP API.
      *
-     * <p>{@code JavaMailSender} is only autoconfigured when {@code spring.mail.host} is
-     * set. An {@code ObjectProvider} lets the service start, and every non-mail endpoint
-     * work, on a machine with no SMTP configured at all — rather than failing to start
-     * because a bean is missing.
+     * <p>THIS USED TO BE A {@code JavaMailSender} DIRECTLY, and that was the bug: SMTP was
+     * not a detail, it was the only option, and Render's free web services block outbound
+     * SMTP ports. Every verification code was recorded undelivered on that host and no
+     * configuration could fix it. Which transport is in here is decided once, at startup,
+     * by {@code MailTransportConfiguration}.
      */
-    private final ObjectProvider<JavaMailSender> mailSender;
+    private final MailTransport transport;
 
-    Mailer(
-            OutboundMailProperties settings,
-            OutboxRepository outbox,
-            ObjectProvider<JavaMailSender> mailSender) {
+    Mailer(OutboundMailProperties settings, OutboxRepository outbox, MailTransport transport) {
         this.settings = settings;
         this.outbox = outbox;
-        this.mailSender = mailSender;
+        this.transport = transport;
     }
 
     /**
@@ -82,46 +74,25 @@ public class Mailer {
                             kind, settings.from(), to, subject, body, "Sending is disabled"));
         }
 
-        JavaMailSender sender = mailSender.getIfAvailable();
-        if (sender == null) {
-            log.error(
-                    "Mail is on but no mail sender is configured (spring.mail.host is unset)."
-                            + " Recording {} to {} as undelivered.",
-                    kind,
-                    to);
-            return outbox.save(
-                    OutboxEntity.notSent(
-                            kind, settings.from(), to, subject, body, "No mail sender configured"));
-        }
-
         try {
-            MimeMessage message = sender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-            helper.setFrom(settings.from(), settings.fromName());
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(body, false);
-            sender.send(message);
+            transport.send(settings.from(), settings.fromName(), to, subject, body);
 
-            log.info("Sent {} to {}", kind, to);
-            return outbox.save(
-                    OutboxEntity.sent(kind, settings.from(), to, subject, body));
+            log.info("Sent {} to {} over {}", kind, to, transport.description());
+            return outbox.save(OutboxEntity.sent(kind, settings.from(), to, subject, body));
 
-        } catch (MailException | jakarta.mail.MessagingException | UnsupportedEncodingException e) {
+        } catch (MailTransportException e) {
             /*
-             * The exception's own message is not stored. It can carry the SMTP dialogue,
-             * which for an authentication failure includes the username — and a provider's
-             * text is not something to put in a column that a support screen renders.
+             * THE MESSAGE ON THE EXCEPTION IS WHAT GETS STORED, and that is safe by the
+             * type's own contract: a transport logs the provider's text and throws
+             * something plain, because this column is rendered on a staff screen. The old
+             * code hard-coded one SMTP-shaped sentence here, which would have read "the
+             * mail server rejected or could not be reached" for an HTTP API that answered
+             * 401 — true in spirit and useless for finding the problem.
              */
-            log.error("Failed to send {} to {}", kind, to, e);
+            log.error("Failed to send {} to {} over {}", kind, to, transport.description());
             return outbox.save(
                     OutboxEntity.notSent(
-                            kind,
-                            settings.from(),
-                            to,
-                            subject,
-                            body,
-                            "The mail server rejected or could not be reached."));
+                            kind, settings.from(), to, subject, body, e.getMessage()));
         }
     }
 }

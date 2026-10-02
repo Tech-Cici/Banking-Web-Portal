@@ -25,10 +25,12 @@ class MailStartupCheck {
 
     private final OutboundMailProperties mail;
     private final MailProperties smtp;
+    private final BrevoProperties brevo;
 
-    MailStartupCheck(OutboundMailProperties mail, MailProperties smtp) {
+    MailStartupCheck(OutboundMailProperties mail, MailProperties smtp, BrevoProperties brevo) {
         this.mail = mail;
         this.smtp = smtp;
+        this.brevo = brevo;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -49,24 +51,77 @@ class MailStartupCheck {
         }
 
         /*
-         * Only ever asked whether it is blank. The value is not logged, not returned, and
-         * not held anywhere — an SMTP password in a log file is a password in every backup
-         * and every log aggregator downstream of it.
+         * TWO TRANSPORTS NOW, and each has its own way of being half-configured. Reporting
+         * SMTP credentials on a deployment that sends over HTTP would send somebody to
+         * check a password that is not used.
          */
-        boolean credentialsMissing =
-                isBlank(smtp.getUsername()) || isBlank(smtp.getPassword());
+        if (brevo.enabled()) {
+            /*
+             * Only ever asked whether it is blank — see BrevoProperties. An API key in a log
+             * file is a key in every backup downstream of it. BrevoProperties already
+             * refuses to bind without one, so reaching here blank should be impossible; the
+             * line stays because "should be impossible" is how the SMTP case started.
+             */
+            if (!brevo.hasApiKey()) {
+                log.error(
+                        "Email is ON over Brevo but BREVO_API_KEY is empty. Every send will"
+                                + " fail. Create a key at https://app.brevo.com under SMTP & API"
+                                + " → API keys.");
+                return;
+            }
 
-        if (credentialsMissing) {
-            log.error(
-                    "Email is ON but SMTP credentials are incomplete (MAIL_USERNAME and/or"
-                            + " MAIL_PASSWORD are empty). Every send will fail. For Gmail,"
-                            + " MAIL_PASSWORD must be a 16-character App Password from"
-                            + " https://myaccount.google.com/apppasswords (the account password"
-                            + " is not accepted).");
-            return;
+            log.info(
+                    "Email is ON, sending as {} <{}> via the Brevo HTTP API."
+                            + " SMTP settings are ignored.",
+                    mail.fromName(),
+                    mail.from());
+
+            /*
+             * THE MISTAKE THIS CATCHES. Brevo refuses to send from an address that is not a
+             * verified sender in the account, and the failure arrives as a 400 that reads
+             * like a malformed request. Saying it here, at startup, is cheaper than finding
+             * it when a customer is waiting for a code.
+             */
+            log.warn(
+                    "Brevo will refuse any message whose sender is not verified in the account."
+                            + " Confirm {} is listed under Senders, domains & dedicated IPs.",
+                    mail.from());
+
+        } else {
+            /*
+             * Only ever asked whether it is blank. The value is not logged, not returned, and
+             * not held anywhere — an SMTP password in a log file is a password in every backup
+             * and every log aggregator downstream of it.
+             */
+            boolean credentialsMissing =
+                    isBlank(smtp.getUsername()) || isBlank(smtp.getPassword());
+
+            if (credentialsMissing) {
+                log.error(
+                        "Email is ON but SMTP credentials are incomplete (MAIL_USERNAME and/or"
+                                + " MAIL_PASSWORD are empty). Every send will fail. For Gmail,"
+                                + " MAIL_PASSWORD must be a 16-character App Password from"
+                                + " https://myaccount.google.com/apppasswords (the account password"
+                                + " is not accepted).");
+                return;
+            }
+
+            log.info(
+                    "Email is ON, sending as {} <{}> via {}",
+                    mail.fromName(),
+                    mail.from(),
+                    smtp.getHost());
+
+            /*
+             * SMTP DOES NOT WORK EVERYWHERE, and the host that does not allow it does not say
+             * so — the send simply fails as though the relay were down. Render's free web
+             * services block outbound SMTP ports outright, which cost an afternoon to find.
+             */
+            log.info(
+                    "If every send fails with a connection error, check whether the host allows"
+                            + " outbound SMTP. Some platforms block those ports entirely; set"
+                            + " BREVO_ENABLED=true to send over HTTPS instead.");
         }
-
-        log.info("Email is ON, sending as {} <{}> via {}", mail.fromName(), mail.from(), smtp.getHost());
 
         if (!mail.hasOwnedSenderDomain()) {
             log.warn(

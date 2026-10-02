@@ -60,10 +60,11 @@ Set these in Render's environment, as **secret** values where marked:
 | `BOOTSTRAP_ADMIN_PASSWORD` | 12+ chars, mixed case, a digit | **yes** |
 | `BOOTSTRAP_MANAGER_EMAIL` | the manager's address, **different** from the admin | no |
 | `BOOTSTRAP_MANAGER_PASSWORD` | 12+ chars | **yes** |
-| `MAIL_ENABLED` | `true` if you have a Google App Password, otherwise `false` | no |
-| `MAIL_HOST` / `MAIL_PORT` | `smtp.gmail.com` / `587` | no |
-| `MAIL_USERNAME` | the sending address | no |
-| `MAIL_PASSWORD` | a Google **App Password**, not the account password | **yes** |
+| `MAIL_ENABLED` | `true` | no |
+| `BREVO_ENABLED` | `true` — see below; SMTP cannot work here | no |
+| `BREVO_API_KEY` | the `xkeysib-…` key from Brevo | **yes** |
+| `MAIL_FROM` | the From address, **verified in Brevo first** | no |
+| `MAIL_FROM_NAME` | `Zigama CSS` | no |
 
 ### Why `SESSION_COOKIE_SAME_SITE=none` here, and what it costs
 
@@ -78,6 +79,36 @@ own CSRF token, which then becomes the only layer rather than the second one.
 `portal.zigama.rw` on Vercel and `api.zigama.rw` on Render — and leave the value at
 `strict`. Subdomains of one domain are the same site, so nothing is weakened and no
 configuration changes.
+
+### Why email goes over HTTPS and not SMTP
+
+**Render's free web services do not allow outbound traffic to SMTP ports.** Not throttled,
+not filtered — blocked. With `MAIL_HOST=smtp.gmail.com` and a valid 16-character App
+Password, the first registration on this deployment recorded:
+
+```
+EMAIL_VERIFICATION | delivered: f
+failure: The mail server rejected or could not be reached.
+```
+
+No credential could have fixed it; the connection never left the container. So mail goes
+through **Brevo's transactional HTTP API** (`api.brevo.com/v3/smtp/email`) on port 443.
+
+Three things about that:
+
+- Brevo also sells an **SMTP relay** on port 587. That would be blocked exactly as Gmail's
+  is. `BREVO_ENABLED=true` selects the HTTP API, which is a different thing despite the
+  endpoint path containing the word "smtp".
+- **The sender must be verified in Brevo before anything sends.** Add the `MAIL_FROM`
+  address under *Senders, domains & dedicated IPs*, and click the link in the confirmation
+  email Brevo sends you. An unverified sender comes back as a 400, which reads like a
+  malformed request rather than a permission problem. The startup log warns about this
+  every time.
+- The free plan allows **300 emails a day**, which is ample for a demonstration.
+
+With `BREVO_ENABLED=true` every `spring.mail.*` setting is ignored, which is why no SMTP
+variables appear in the table above. Setting `BREVO_ENABLED=false` switches back to SMTP —
+correct for development, and useless on Render's free tier.
 
 ### The first staff logins
 
@@ -149,8 +180,10 @@ variable is reported by name, in a list, before anything else is attempted.
 ## 5. First run
 
 1. Register on the public site.
-2. Read the verification code — from your inbox if `MAIL_ENABLED=true`, otherwise from
-   `/staff/developer-tools` → **Sent messages**, signed in as either bootstrap login.
+2. Read the verification code from your inbox. If it does not arrive, open
+   `/staff/developer-tools` → **Sent messages** signed in as either bootstrap login: every
+   message is recorded there whether or not it was delivered, with the reason when it was
+   not. That row is the first place to look for any mail problem.
 3. Sign into `/staff` as the **administrator** to create the account, which issues a
    temporary password (same two places to read it).
 4. Sign in as the **manager** to approve it.
