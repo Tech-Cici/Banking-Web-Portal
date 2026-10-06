@@ -260,7 +260,7 @@ export function SendMoneyPage(): ReactElement {
     <article className="money__narrow">
       <PageHeader
         title="Send money"
-        lead="To another account at Zigama CSS. Every transfer is released by a manager."
+        lead="To another account in this demo. Every transfer is released by a manager."
         crumbs={[{ label: 'Transfers', to: RETAIL_PATHS.transfers }]}
       />
 
@@ -470,7 +470,7 @@ export function SendMoneyPage(): ReactElement {
           hint={
             source === undefined
               ? undefined
-              : `Available: ${formatBalanceDto(source.availableBalance)}. There is no transfer fee inside Zigama.`
+              : `Available: ${formatBalanceDto(source.availableBalance)}. There is no transfer fee inside this demo.`
           }
         />
 

@@ -62,9 +62,9 @@ export function OutboundNotAvailablePage({
 
       <Alert tone="info" title="What does work">
         <p>
-          You can move money between your own accounts, and to anyone else who banks at
-          Zigama CSS, by their account number.{' '}
-          <Link to={RETAIL_PATHS.transferInternal}>Send money at Zigama</Link>.
+          You can move money between your own accounts, and to anyone else with an
+          account in this demonstration, by their account number.{' '}
+          <Link to={RETAIL_PATHS.transferInternal}>Send money</Link>.
         </p>
       </Alert>
     </article>

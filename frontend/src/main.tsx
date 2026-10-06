@@ -62,7 +62,7 @@ startMockApi()
     const container = document.getElementById('root');
     if (container !== null) {
       container.textContent =
-        'Zigama CSS Internet Banking could not start. Please reload the page or contact support.';
+        'This internet banking demonstration could not start. Please reload the page.';
     }
     throw cause;
   });

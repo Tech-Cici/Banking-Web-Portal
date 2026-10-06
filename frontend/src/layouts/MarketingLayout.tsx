@@ -306,7 +306,10 @@ export function MarketingLayout(): ReactElement {
             above it, and a customer can do nothing with the information. The items are
             tracked in docs/OPEN-ITEMS.md.
           */}
-          <p>&copy; {String(new Date().getFullYear())} Zigama CSS. All rights reserved.</p>
+          <p>
+            &copy; {String(new Date().getFullYear())} Ciara&rsquo;s demo. A demonstration
+            project, not a real bank.
+          </p>
           <p>Version {appConfig.appVersion}</p>
         </div>
       </footer>
