@@ -40,7 +40,7 @@ class OutboundMailPropertiesTest {
         @DisplayName("a blank display name falls back to the bank's name")
         void fromNameDefault() {
             assertThat(new OutboundMailProperties(false, "a@b.rw", "  ", null).fromName())
-                    .isEqualTo("Zigama CSS");
+                    .isEqualTo("Ciara's demo");
         }
     }
 

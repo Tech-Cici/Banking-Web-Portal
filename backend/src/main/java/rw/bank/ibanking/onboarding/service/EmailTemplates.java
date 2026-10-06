@@ -22,7 +22,7 @@ final class EmailTemplates {
 
     private EmailTemplates() {}
 
-    static final String VERIFICATION_SUBJECT = "Your Zigama CSS verification code";
+    static final String VERIFICATION_SUBJECT = "Your verification code — Ciara's demo";
 
     static String verification(String code, long validityMinutes) {
         return String.join(
@@ -32,14 +32,14 @@ final class EmailTemplates {
                 "Enter it on the registration page to confirm this email address is yours.",
                 "It expires in " + validityMinutes + " minutes.",
                 "",
-                "If you did not start a registration with Zigama CSS, ignore this message —",
+                "If you did not start a registration with Ciara's demo, ignore this message —",
                 "no account will be created and nothing further will happen.",
                 "",
-                "Zigama CSS will never ask you for this code by phone, SMS or email.",
+                "Ciara's demo will never ask you for this code by phone, SMS or email.",
                 "Anyone who does is not the bank.");
     }
 
-    static final String APPROVED_SUBJECT = "Your Zigama CSS internet banking account is ready";
+    static final String APPROVED_SUBJECT = "Your internet banking account is ready — Ciara's demo";
 
     /**
      * Note what is absent: the password.
@@ -117,14 +117,14 @@ final class EmailTemplates {
                 "",
                 "Delete this email once you have changed your password.",
                 "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email. Always type the banking address into your browser",
                 "yourself rather than following a link — including a link in this message.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
-    static final String FROZEN_SUBJECT = "Your Zigama CSS internet banking access has been paused";
+    static final String FROZEN_SUBJECT = "Your internet banking access has been paused — Ciara's demo";
 
     /**
      * Tells the customer their access has stopped — without saying why.
@@ -143,7 +143,7 @@ final class EmailTemplates {
                 "\n",
                 "Dear " + fullName + ",",
                 "",
-                "We have paused access to your Zigama CSS internet banking. You will not be",
+                "We have paused access to your internet banking. You will not be",
                 "able to sign in until it is restored.",
                 "",
                 "Your money is not affected by this and your account itself remains open.",
@@ -151,29 +151,29 @@ final class EmailTemplates {
                 "Please call the number on the back of your card, or visit any branch, and we",
                 "will explain. Bring your identification.",
                 "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
-    static final String UNFROZEN_SUBJECT = "Your Zigama CSS internet banking access is back";
+    static final String UNFROZEN_SUBJECT = "Your internet banking access is back — Ciara's demo";
 
     static String unfrozen(String fullName) {
         return String.join(
                 "\n",
                 "Dear " + fullName + ",",
                 "",
-                "Access to your Zigama CSS internet banking has been restored. You can sign in",
+                "Access to your internet banking has been restored. You can sign in",
                 "again with the password you already use.",
                 "",
                 "If you did not expect this, call the number on the back of your card straight",
                 "away.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
-    static final String REJECTED_SUBJECT = "About your Zigama CSS internet banking application";
+    static final String REJECTED_SUBJECT = "About your internet banking application — Ciara's demo";
 
     static String rejected(String fullName, String reason) {
         return String.join(
@@ -188,12 +188,12 @@ final class EmailTemplates {
                 "different details, please visit any branch or call the number printed on the",
                 "back of your card. We can explain what is needed.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     /* ------------------------------------------------- a forgotten password */
 
-    static final String RESET_ISSUED_SUBJECT = "Your new Zigama CSS internet banking password";
+    static final String RESET_ISSUED_SUBJECT = "Your new internet banking password — Ciara's demo";
 
     /**
      * The re-issued password, after a customer asked the bank for a new one.
@@ -246,14 +246,14 @@ final class EmailTemplates {
                 "",
                 "Delete this email once you have changed your password.",
                 "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email. Always type the banking address into your browser",
                 "yourself rather than following a link - including a link in this message.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
-    static final String RESET_REFUSED_SUBJECT = "About your Zigama CSS password request";
+    static final String RESET_REFUSED_SUBJECT = "About your password request — Ciara's demo";
 
     /**
      * Told, not left waiting.
@@ -278,7 +278,7 @@ final class EmailTemplates {
                 "",
                 "If you did not ask for a new password, you do not need to do anything.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     static final String BENEFICIARY_APPROVED_SUBJECT = "You can now pay a payee you saved";
@@ -315,11 +315,11 @@ final class EmailTemplates {
                 "IF YOU DID NOT ADD THIS PAYEE, somebody else may have access to your internet",
                 "banking. Call the number printed on the back of your card straight away.",
                 "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email. Always type the banking address into your browser",
                 "yourself rather than following a link - including a link in this message.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     static final String BENEFICIARY_REFUSED_SUBJECT = "About a payee you saved";
@@ -353,7 +353,7 @@ final class EmailTemplates {
                 "IF YOU DID NOT ADD THIS PAYEE, somebody else may have access to your internet",
                 "banking. Please call us straight away.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     static final String PASSWORD_CHANGED_SUBJECT = "Your password has been changed";
@@ -399,10 +399,10 @@ final class EmailTemplates {
                 browsers == null ? "" : browsers,
                 browsers == null ? "" : "You will be asked for a code next time you sign in.",
                 browsers == null ? "" : "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email, and we will never send you a link to reset it.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     static final String SERVICE_REQUEST_READY_SUBJECT = "Your request is ready to collect";
@@ -437,10 +437,10 @@ final class EmailTemplates {
                 "IF YOU DID NOT ASK FOR THIS, somebody else may have access to your internet",
                 "banking. Call the number printed on the back of your card straight away.",
                 "",
-                "Zigama CSS will never ask you for your password, PIN or one-time code by",
+                "Ciara's demo will never ask you for your password, PIN or one-time code by",
                 "phone, SMS or email.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 
     static final String SERVICE_REQUEST_DECLINED_SUBJECT = "About your request";
@@ -463,6 +463,6 @@ final class EmailTemplates {
                 "visit any branch with your ID or call the number printed on the back of your",
                 "card.",
                 "",
-                "Zigama CSS");
+                "Ciara's demo");
     }
 }

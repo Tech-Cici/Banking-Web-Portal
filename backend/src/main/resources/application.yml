@@ -210,7 +210,7 @@ ibanking:
     from: ${MAIL_FROM:ciaramuzora@gmail.com}
 
     # What the From line reads as, next to the address.
-    from-name: ${MAIL_FROM_NAME:Zigama CSS}
+    from-name: ${MAIL_FROM_NAME:Ciara's demo}
 
     # How long a verification code stays valid. Short: a code that lives for an hour is
     # an hour in which a forwarded email is still a working credential.

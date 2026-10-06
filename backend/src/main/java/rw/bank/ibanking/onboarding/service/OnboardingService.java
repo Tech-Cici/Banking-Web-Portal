@@ -486,7 +486,7 @@ public class OnboardingService {
         mailer.send(
                 OutboxKind.ACCOUNT_CREATED,
                 application.email(),
-                "Your Zigama CSS application is being reviewed",
+                "Your application is being reviewed — Ciara's demo",
                 String.join(
                         "\n",
                         "Dear " + application.displayName() + ",",
@@ -494,7 +494,7 @@ public class OnboardingService {
                         "We have created your internet banking account and it is now with a",
                         "manager for approval. We will email you again as soon as it is ready.",
                         "",
-                        "Zigama CSS"));
+                        "Ciara's demo"));
 
         /*
          * The customer's accounts, as the administrator read them off the bank's records.

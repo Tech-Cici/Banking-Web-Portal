@@ -40,7 +40,7 @@ public record OutboundMailProperties(boolean enabled, String from, String fromNa
 
     public OutboundMailProperties {
         from = from == null ? "" : from.trim();
-        fromName = fromName == null || fromName.isBlank() ? "Zigama CSS" : fromName.trim();
+        fromName = fromName == null || fromName.isBlank() ? "Ciara's demo" : fromName.trim();
         codeValidity = codeValidity == null ? DEFAULT_CODE_VALIDITY : codeValidity;
 
         /*

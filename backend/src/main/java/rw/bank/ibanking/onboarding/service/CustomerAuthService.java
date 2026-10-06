@@ -441,7 +441,7 @@ public class CustomerAuthService {
         mailer.send(
                 OutboxKind.EMAIL_VERIFICATION,
                 customer.email(),
-                "Your Zigama CSS sign-in code",
+                "Your sign-in code — Ciara's demo",
                 String.join(
                         "\n",
                         "Your sign-in code is " + code + ".",
@@ -451,7 +451,7 @@ public class CustomerAuthService {
                         "If you are not trying to sign in, somebody may have your password.",
                         "Change it as soon as you can and call the number on the back of your card.",
                         "",
-                        "Zigama CSS will never ask you for this code by phone, SMS or email."));
+                        "Ciara's demo will never ask you for this code by phone, SMS or email."));
 
         return challenge.id().toString();
     }

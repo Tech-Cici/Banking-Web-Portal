@@ -69,7 +69,7 @@ class MailerTest {
             properties = {
                 "ibanking.mail.enabled=true",
                 "ibanking.mail.from=noreply@zigama.rw",
-                "ibanking.mail.from-name=Zigama CSS",
+                "ibanking.mail.from-name=Ciara's demo",
                 "spring.mail.host=localhost",
                 "spring.mail.username=noreply@zigama.rw",
                 "spring.mail.password=irrelevant-for-this-test",
@@ -100,7 +100,7 @@ class MailerTest {
                     mailer.send(
                             OutboxKind.EMAIL_VERIFICATION,
                             "applicant@example.rw",
-                            "Your Zigama CSS verification code",
+                            "Your verification code — Ciara's demo",
                             "Your verification code is 123456.");
 
             ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
@@ -108,9 +108,9 @@ class MailerTest {
             MimeMessage sent = captor.getValue();
 
             assertThat(sent.getFrom()[0].toString()).contains("noreply@zigama.rw");
-            assertThat(sent.getFrom()[0].toString()).contains("Zigama CSS");
+            assertThat(sent.getFrom()[0].toString()).contains("Ciara's demo");
             assertThat(sent.getAllRecipients()[0].toString()).isEqualTo("applicant@example.rw");
-            assertThat(sent.getSubject()).isEqualTo("Your Zigama CSS verification code");
+            assertThat(sent.getSubject()).isEqualTo("Your verification code — Ciara's demo");
             assertThat(sent.getContent().toString()).contains("123456");
 
             assertThat(row.delivered()).isTrue();
