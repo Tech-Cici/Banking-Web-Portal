@@ -133,7 +133,7 @@ headers.
 
 | Variable | Value |
 |---|---|
-| `VITE_API_BASE_URL` | the Render URL plus `/api/v1`, e.g. `https://zigama-api.onrender.com/api/v1` |
+| `VITE_API_BASE_URL` | the PORTAL's own origin plus `/api/v1`, e.g. `https://banking-web-portal.vercel.app/api/v1` — not the Render URL, and not a bare path (`/api/v1` fails `new URL()` in config/env.ts and the app will not boot). `vercel.json` rewrites `/api/*` to Render, which is what keeps the session and CSRF cookies first-party. Pointing this straight at the Render host splits the origins, and the SPA can then no longer read the `XSRF-TOKEN` cookie, so every authenticated POST returns 403. |
 | `VITE_API_TIMEOUT_MS` | `30000` |
 | `VITE_ENABLE_MOCK_API` | `false` — the build refuses `true` and the app will not boot |
 | `VITE_APP_VERSION` | anything; shown in the footer for support |
@@ -170,7 +170,12 @@ alone did **not** work.
 
    Watch the logs for `BOOTSTRAPPED THE FIRST TWO STAFF LOGINS` and for Flyway applying 21
    migrations.
-3. **Vercel**, with `VITE_API_BASE_URL` pointing at the Render hostname from step 2.
+3. **Vercel**: deploy with `vercel.json` in place FIRST, carrying the Render hostname
+   from step 2 in its `/api/:path*` rewrite. Confirm `/api/v1/session` on the Vercel
+   origin answers with JSON rather than `index.html`, and only then set
+   `VITE_API_BASE_URL` to that origin plus `/api/v1` and redeploy. Doing it the other
+   way round points the app at a path that forwards nothing: GETs return the HTML
+   shell and POSTs return 405.
 4. **Back to Render**: correct `CORS_ALLOWED_ORIGINS` to the origin Vercel actually gave
    you, if it differs from your guess. Changing it redeploys.
 

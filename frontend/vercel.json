@@ -5,7 +5,11 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/).*)",
+      "source": "/api/:path*",
+      "destination": "https://zigama-api-kebm.onrender.com/api/:path*"
+    },
+    {
+      "source": "/((?!assets/|api/).*)",
       "destination": "/index.html"
     }
   ],
