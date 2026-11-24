@@ -7,7 +7,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
+import rw.bank.ibanking.common.money.Money;
 import rw.bank.ibanking.exception.BusinessRuleException;
 
 /**
@@ -62,17 +64,50 @@ public class ServiceRequestEntity {
     @Column(name = "ready_by_name", length = 160)
     private String readyByName;
 
-    @Column(name = "collected_at")
-    private Instant collectedAt;
+    /*
+     * WHEN THIS REQUEST REACHED AN ENDING SOMEBODY PERFORMED, and who performed it. Handed
+     * over, or granted -- V31 renamed the pair from collected_* once a loan could end a
+     * request without anybody collecting anything. A decline keeps its own columns because it
+     * carries a reason the other endings do not.
+     */
+    @Column(name = "finished_at")
+    private Instant finishedAt;
 
-    @Column(name = "collected_by_name", length = 160)
-    private String collectedByName;
+    @Column(name = "finished_by_name", length = 160)
+    private String finishedByName;
 
     @Column(name = "declined_at")
     private Instant declinedAt;
 
     @Column(name = "declined_by_name", length = 160)
     private String declinedByName;
+
+    /*
+     * THE LOAN APPLICATION'S TERMS, AS FIGURES.
+     *
+     * NULL FOR EVERY OTHER KIND OF REQUEST, and the database says so: V29 carries a
+     * constraint tying these four to LOAN_APPLICATION in both directions, so a cheque book
+     * cannot acquire an amount and a live loan application cannot lack one.
+     *
+     * WHY THEY ARE NOT IN `details`. They were, as English, inside a sentence built for a
+     * person to read. Granting the loan then meant parsing that sentence or retyping it, and
+     * both settle how much money to lend by a route that can be wrong silently. `details`
+     * still carries the customer's own words for the purpose, which no column replaces.
+     *
+     * WHAT THE CUSTOMER ASKED FOR, NOT WHAT THE BANK DECIDED. Staff may grant a different
+     * amount or term; that lives on the loan, not here.
+     */
+    @Column(name = "loan_product", length = 32)
+    private String loanProduct;
+
+    @Column(name = "loan_amount_minor")
+    private Long loanAmountMinor;
+
+    @Column(name = "loan_currency", length = 3)
+    private String loanCurrency;
+
+    @Column(name = "loan_months")
+    private Integer loanMonths;
 
     @Column(name = "decline_reason", length = 300)
     private String declineReason;
@@ -99,6 +134,51 @@ public class ServiceRequestEntity {
             UUID customerId, ServiceRequestType requestType, UUID accountId, String details) {
 
         return new ServiceRequestEntity(customerId, requestType, accountId, details);
+    }
+
+    /**
+     * A loan application, which carries terms as well as a sentence.
+     *
+     * <p>A SEPARATE FACTORY rather than four more parameters on {@link #raisedBy}. Every
+     * other request type would have to pass four nulls, and a call site passing nulls is one
+     * that can pass them in the wrong order. This way the only way to build a loan
+     * application is the way that includes its figures.
+     */
+    public static ServiceRequestEntity loanApplied(
+            UUID customerId,
+            UUID accountId,
+            String details,
+            String product,
+            Money amount,
+            int months) {
+
+        ServiceRequestEntity request =
+                new ServiceRequestEntity(
+                        customerId, ServiceRequestType.LOAN_APPLICATION, accountId, details);
+
+        request.loanProduct = product;
+        request.loanAmountMinor = amount.minorUnits();
+        request.loanCurrency = amount.currency();
+        request.loanMonths = months;
+
+        return request;
+    }
+
+    /** What the customer asked to borrow, for a loan application. */
+    public Optional<Money> loanAmount() {
+        return loanAmountMinor == null || loanCurrency == null
+                ? Optional.empty()
+                : Optional.of(new Money(loanAmountMinor, loanCurrency));
+    }
+
+    /** The product code the customer asked for. */
+    public Optional<String> loanProduct() {
+        return Optional.ofNullable(loanProduct);
+    }
+
+    /** The term in months the customer asked for. */
+    public Optional<Integer> loanMonths() {
+        return Optional.ofNullable(loanMonths);
     }
 
     /**
@@ -165,11 +245,39 @@ public class ServiceRequestEntity {
      * made, and it would leave the collection point and the ready timestamp null against a
      * database constraint that requires them.
      */
+    /**
+     * Approved and paid out.
+     *
+     * <p>FROM SUBMITTED, NOT FROM READY. A loan has no "ready" step: there is nothing to make
+     * and nothing to put on a counter, so the staff action goes straight from the application
+     * to the money being in the account. Requiring READY first would mean inventing a stage
+     * that exists for cheque books and has no meaning here.
+     *
+     * <p>IT SHARES finished_at WITH A COLLECTION. The pair records when a request reached an
+     * ending somebody performed and who performed it, which is one fact; a granted_at beside
+     * it would leave four columns of which two are ever filled, and every screen asking "who
+     * finished this?" would have to ask twice. The status says which kind of ending it was.
+     * V31 renamed the columns, which were called collected_* when every ending was a
+     * collection.
+     */
+    public void granted(String staffName) {
+        requireStatus(ServiceRequestStatus.SUBMITTED, staffName, "granted");
+
+        if (requestType != ServiceRequestType.LOAN_APPLICATION) {
+            throw new BusinessRuleException(
+                    "A " + requestType.label() + " cannot be granted. Only a loan can.");
+        }
+
+        this.status = ServiceRequestStatus.GRANTED;
+        this.finishedAt = Instant.now();
+        this.finishedByName = staffName;
+    }
+
     public void markedCollected(String staffName) {
         requireStatus(ServiceRequestStatus.READY, staffName, "collected");
         this.status = ServiceRequestStatus.COLLECTED;
-        this.collectedAt = Instant.now();
-        this.collectedByName = staffName;
+        this.finishedAt = Instant.now();
+        this.finishedByName = staffName;
     }
 
     /** Declines it, with the reason the customer is shown and emailed. */
@@ -264,12 +372,14 @@ public class ServiceRequestEntity {
         return readyByName;
     }
 
-    public Instant collectedAt() {
-        return collectedAt;
+    /** When this was handed over or granted. Null while open, and null on a decline. */
+    public Instant finishedAt() {
+        return finishedAt;
     }
 
-    public String collectedByName() {
-        return collectedByName;
+    /** Who handed it over or granted it. */
+    public String finishedByName() {
+        return finishedByName;
     }
 
     public String declineReason() {

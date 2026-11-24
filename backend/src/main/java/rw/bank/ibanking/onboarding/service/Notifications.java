@@ -214,6 +214,108 @@ public class Notifications {
     }
 
     /**
+     * Money arrived from somebody else.
+     *
+     * <p>NAMES THE SENDER AND THEIR MASKED ACCOUNT, because "RWF 9,000 arrived" is not
+     * useful to somebody expecting money from two different people, and the mask is how
+     * they tell a payment from the right person apart from a payment from the wrong one.
+     *
+     * <p>THE SENDER'S REFERENCE IS THEIR FREE TEXT and is quoted rather than interpreted.
+     * It is the line the recipient matches against an invoice.
+     *
+     * <p>LINKS TO THE ACCOUNTS PAGE, not to /transfers. The recipient did not make a
+     * transfer; sending them to the screen for money going out would be the wrong place
+     * to land after being told money came in.
+     */
+    @Transactional
+    public void transferReceived(
+            UUID customerId, Money amount, String senderName, String senderMask, String reference) {
+
+        raise(
+                customerId,
+                NotificationKind.TRANSFER_RECEIVED,
+                "You received " + display(amount),
+                "From "
+                        + senderName
+                        + " ("
+                        + senderMask
+                        + ")"
+                        + (reference == null || reference.isBlank() ? "" : ", " + reference)
+                        + ". It is in your account now.",
+                "/accounts");
+    }
+
+    /**
+     * A loan was granted and the money paid in.
+     *
+     * <p>SAYS THE AMOUNT AND WHERE IT WENT, because the balance has already changed by the
+     * time anybody reads this. A customer who sees an unexplained credit has been given money
+     * by a system that did not tell them why, and the first thing they will do is ring the
+     * bank to ask whether it is a mistake.
+     *
+     * <p>AND WHAT THEY NOW OWE. The credit is the good half of the news; the instalment is
+     * the half they have to plan around.
+     */
+    @Transactional
+    public void loanGranted(
+            UUID customerId, Money principal, String accountMask, Money installment) {
+
+        raise(
+                customerId,
+                NotificationKind.LOAN_GRANTED,
+                "Your loan has been approved",
+                display(principal)
+                        + " has been paid into "
+                        + accountMask
+                        + ". Your repayment is "
+                        + display(installment)
+                        + " a month.",
+                "/loans");
+    }
+
+    /** A standing order paid. */
+    @Transactional
+    public void standingOrderPaid(
+            UUID customerId, Money amount, String destinationMask, String reference) {
+
+        raise(
+                customerId,
+                NotificationKind.STANDING_ORDER_PAID,
+                "Your standing order has paid",
+                display(amount)
+                        + " to "
+                        + destinationMask
+                        + " ("
+                        + reference
+                        + ") has left your account.",
+                "/standing-orders");
+    }
+
+    /**
+     * A standing order could not pay.
+     *
+     * <p>SAYS THE MONEY DID NOT MOVE, in those words, and why. Nobody approved this payment
+     * and nobody noticed it fail; the customer is the only party who can act on it, and a
+     * message that only said "failed" would leave them unsure whether to pay by hand.
+     */
+    @Transactional
+    public void standingOrderFailed(
+            UUID customerId, Money amount, String reference, String reason) {
+
+        raise(
+                customerId,
+                NotificationKind.STANDING_ORDER_FAILED,
+                "Your standing order did not pay",
+                display(amount)
+                        + " ("
+                        + reference
+                        + ") has NOT been paid and nothing has left your account. "
+                        + reason
+                        + " The next payment is unaffected.",
+                "/standing-orders");
+    }
+
+    /**
      * The password changed.
      *
      * <p>NO LINK TO A RESET, AND NO LINK AT ALL EXCEPT THE SECURITY PAGE. A notification

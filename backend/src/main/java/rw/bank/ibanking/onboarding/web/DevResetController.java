@@ -13,18 +13,26 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import rw.bank.ibanking.onboarding.repo.AccountTransactionRepository;
 import rw.bank.ibanking.onboarding.repo.ApplicationRepository;
+import rw.bank.ibanking.onboarding.repo.BeneficiaryRepository;
 import rw.bank.ibanking.onboarding.repo.BusinessApplicationRepository;
 import rw.bank.ibanking.onboarding.repo.BusinessDocumentRepository;
 import rw.bank.ibanking.onboarding.repo.BusinessSignatoryRepository;
+import rw.bank.ibanking.onboarding.repo.CardRepository;
 import rw.bank.ibanking.onboarding.repo.CompanyRepository;
 import rw.bank.ibanking.onboarding.repo.CorporateMembershipRepository;
 import rw.bank.ibanking.onboarding.repo.CustomerAccountRepository;
 import rw.bank.ibanking.onboarding.repo.CustomerRepository;
 import rw.bank.ibanking.onboarding.repo.EmailVerificationRepository;
+import rw.bank.ibanking.onboarding.repo.LoanRepository;
 import rw.bank.ibanking.onboarding.repo.LoginChallengeRepository;
+import rw.bank.ibanking.onboarding.repo.NotificationRepository;
 import rw.bank.ibanking.onboarding.repo.OutboxRepository;
+import rw.bank.ibanking.onboarding.repo.PasswordResetRequestRepository;
+import rw.bank.ibanking.onboarding.repo.ServiceRequestRepository;
 import rw.bank.ibanking.onboarding.repo.SignInRepository;
+import rw.bank.ibanking.onboarding.repo.StandingOrderRepository;
 import rw.bank.ibanking.onboarding.repo.TransferRepository;
+import rw.bank.ibanking.onboarding.repo.TrustedDeviceRepository;
 
 /**
  * Empties the onboarding tables so the flow can be walked from nothing.
@@ -53,6 +61,14 @@ class DevResetController {
 
     private static final Logger log = LoggerFactory.getLogger(DevResetController.class);
 
+    private final CardRepository cards;
+    private final LoanRepository loans;
+    private final ServiceRequestRepository serviceRequests;
+    private final StandingOrderRepository standingOrders;
+    private final NotificationRepository notifications;
+    private final BeneficiaryRepository beneficiaries;
+    private final PasswordResetRequestRepository passwordResets;
+    private final TrustedDeviceRepository trustedDevices;
     private final AccountTransactionRepository accountTransactions;
     private final CustomerAccountRepository customerAccounts;
     private final TransferRepository transfers;
@@ -69,6 +85,14 @@ class DevResetController {
     private final OutboxRepository outbox;
 
     DevResetController(
+            CardRepository cards,
+            LoanRepository loans,
+            ServiceRequestRepository serviceRequests,
+            StandingOrderRepository standingOrders,
+            NotificationRepository notifications,
+            BeneficiaryRepository beneficiaries,
+            PasswordResetRequestRepository passwordResets,
+            TrustedDeviceRepository trustedDevices,
             AccountTransactionRepository accountTransactions,
             CustomerAccountRepository customerAccounts,
             TransferRepository transfers,
@@ -83,6 +107,14 @@ class DevResetController {
             LoginChallengeRepository challenges,
             SignInRepository signIns,
             OutboxRepository outbox) {
+        this.cards = cards;
+        this.loans = loans;
+        this.serviceRequests = serviceRequests;
+        this.standingOrders = standingOrders;
+        this.notifications = notifications;
+        this.beneficiaries = beneficiaries;
+        this.passwordResets = passwordResets;
+        this.trustedDevices = trustedDevices;
         this.accountTransactions = accountTransactions;
         this.customerAccounts = customerAccounts;
         this.transfers = transfers;
@@ -134,6 +166,31 @@ class DevResetController {
          * accounts cannot go until the ledger has. It cascades on PostgreSQL and does not
          * on H2, which is the whole reason this order is written out instead of trusted.
          */
+        /*
+         * EVERYTHING THAT POINTS AT AN ACCOUNT, before the accounts themselves.
+         *
+         * This block is the one this file was missing, and the gap had a shape worth
+         * naming: the customer_id foreign keys on these tables all cascade, so deleting a
+         * customer took their rows with it and nobody noticed the omission. The account_id
+         * keys do NOT cascade -- deliberately, since silently deleting a service request
+         * because an account went is not a thing a bank should do quietly -- so the reset
+         * failed on `service_requests_account_id_fkey` and left the database exactly as it
+         * was. The cascade hid five of these six; the one that did not cascade is the only
+         * reason anybody found out.
+         *
+         * Order within the block: issued cards point at service requests as well as at
+         * accounts, and standing orders point at beneficiaries as well, so both go before
+         * what they reference.
+         */
+        cards.deleteAll();
+        loans.deleteAll();
+        serviceRequests.deleteAll();
+        standingOrders.deleteAll();
+        notifications.deleteAll();
+        beneficiaries.deleteAll();
+        passwordResets.deleteAll();
+        trustedDevices.deleteAll();
+
         memberships.deleteAll();
         customerAccounts.deleteAll();
         customers.deleteAll();

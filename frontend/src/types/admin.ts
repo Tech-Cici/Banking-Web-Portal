@@ -298,41 +298,116 @@ export interface Customer {
  * why the form lets you add accounts rather than offering `CURRENT_AND_SAVINGS`, which
  * could never describe closing one of the pair.
  */
+/**
+ * A customer as the bank's core banking system holds them.
+ *
+ * READ, NEVER STORED. This is what the account number on an application resolves to, and
+ * it is the bank's record rather than this service's: nothing here is saved, and the only
+ * part that survives the screen is what a member of staff confirms and creates.
+ *
+ * `telephoneMask` is the last three digits and the server sends nothing more. Staff need
+ * to compare it against the number on the application, and comparing does not require the
+ * whole number.
+ */
+export interface CbsCustomer {
+  readonly accountNumber: string;
+  readonly name: string;
+  readonly customerType: 'INDIVIDUAL' | 'COMPANY';
+  readonly status: string;
+  readonly dormant: boolean;
+  readonly openedOn: string | null;
+  readonly telephoneMask: string;
+  readonly holdings: readonly CbsHolding[];
+}
+
+/**
+ * One product held under that number.
+ *
+ * `balance` is a DECIMAL STRING, never a number. A balance that goes through JavaScript's
+ * floating point is a balance that can come back wrong, and this one is about to be
+ * submitted as an opening figure.
+ */
+export interface CbsHolding {
+  readonly product: AccountType;
+  readonly currency: string;
+  readonly balance: string;
+}
+
 export type AccountType =
+  /* The bank's own five, read from the core banking system. */
   | 'CURRENT'
-  | 'SAVINGS'
+  | 'COMPULSORY_SAVINGS'
+  | 'VOLUNTARY_SAVINGS'
   | 'FIXED_DEPOSIT'
+  | 'EDUCATION_SAVINGS'
+  /* Legacy. Not offered anywhere; kept until no stored row holds one. */
+  | 'SAVINGS'
   | 'SALARY'
   | 'JUNIOR_SAVINGS'
   | 'TARGET_SAVINGS'
   | 'LOAN_SERVICING';
 
-/** What each type is called on screen, and what it means. Placeholder wording. */
-export const ACCOUNT_TYPES: readonly { value: AccountType; label: string; hint: string }[] = [
-  { value: 'CURRENT', label: 'Current account', hint: 'Day-to-day transacting.' },
-  { value: 'SAVINGS', label: 'Savings account', hint: 'Ordinary interest-bearing savings.' },
-  {
-    value: 'FIXED_DEPOSIT',
-    label: 'Fixed deposit',
-    hint: 'Locked for a fixed term at an agreed rate.',
+/**
+ * What each type is called on screen.
+ *
+ * NO LONGER A DROPDOWN'S OPTIONS, and the wording is no longer a placeholder. The five
+ * products are the bank's own, taken from the core system's balance columns, and a member
+ * of staff does not choose between them any more -- the type arrives with the account when
+ * the customer's record is fetched. This map exists so that a stored type has one label,
+ * in one place, wherever it is shown.
+ *
+ * The legacy five are here only so an old row renders as words rather than as a constant.
+ */
+export const ACCOUNT_TYPE_LABELS: Readonly<Record<AccountType, { label: string; hint: string }>> = {
+  CURRENT: { label: 'Current account', hint: 'Day-to-day transacting.' },
+  COMPULSORY_SAVINGS: {
+    label: 'Compulsory savings',
+    hint: 'Required contributions, the standing commitment.',
   },
-  { value: 'SALARY', label: 'Salary account', hint: 'Where an employer pays a salary.' },
-  {
-    value: 'JUNIOR_SAVINGS',
-    label: 'Junior savings',
-    hint: 'Held for a minor, operated by a guardian.',
+  VOLUNTARY_SAVINGS: {
+    label: 'Voluntary savings',
+    hint: 'Saved over and above the required amount.',
   },
-  {
-    value: 'TARGET_SAVINGS',
-    label: 'Target savings',
-    hint: 'Toward a goal, with restricted withdrawals.',
-  },
-  {
-    value: 'LOAN_SERVICING',
-    label: 'Loan servicing',
-    hint: 'Receives disbursements and takes repayments.',
-  },
-];
+  FIXED_DEPOSIT: { label: 'Fixed deposit', hint: 'Locked for a fixed term at an agreed rate.' },
+  EDUCATION_SAVINGS: { label: 'Education savings', hint: 'Put aside for school fees.' },
+
+  SAVINGS: { label: 'Savings account', hint: 'No longer offered.' },
+  SALARY: { label: 'Salary account', hint: 'No longer offered.' },
+  JUNIOR_SAVINGS: { label: 'Junior savings', hint: 'No longer offered.' },
+  TARGET_SAVINGS: { label: 'Target savings', hint: 'No longer offered.' },
+  LOAN_SERVICING: { label: 'Loan servicing', hint: 'No longer offered.' },
+};
+
+/**
+ * The same thing as a list, for the places that render every type.
+ *
+ * DERIVED rather than written out a second time: two hand-maintained copies of a product
+ * catalogue drift, and the one that drifts is always the one somebody reads.
+ */
+export const ACCOUNT_TYPES: readonly { value: AccountType; label: string; hint: string }[] =
+  Object.entries(ACCOUNT_TYPE_LABELS).map(([value, meta]) => ({
+    value: value as AccountType,
+    ...meta,
+  }));
+
+/**
+ * Only the five the bank actually holds.
+ *
+ * For anywhere that offers a choice. Nothing should offer the legacy values, and the
+ * separation means a screen cannot accidentally present one by reaching for the full list.
+ */
+export const OFFERED_ACCOUNT_TYPES: readonly { value: AccountType; label: string; hint: string }[] =
+  ACCOUNT_TYPES.filter((type) =>
+    (
+      [
+        'CURRENT',
+        'COMPULSORY_SAVINGS',
+        'VOLUNTARY_SAVINGS',
+        'FIXED_DEPOSIT',
+        'EDUCATION_SAVINGS',
+      ] as const
+    ).includes(type.value as 'CURRENT'),
+  );
 
 /**
  * Currencies offered in the form. ALSO A PLACEHOLDER.
@@ -534,14 +609,39 @@ export interface ServiceRequestQueueItem {
   readonly customerNumber: string;
   readonly customerName: string;
   readonly email: string;
-  readonly requestType: 'CARD' | 'CHEQUE_BOOK';
+  /* Three now: a loan application reaches the same queue. It is NOT collected, so the
+     ready-with-a-collection-point step does not apply to it. */
+  readonly requestType: 'CARD' | 'CHEQUE_BOOK' | 'LOAN_APPLICATION';
   /** What to make, composed by the service: "Debit card for **** 7890". */
   readonly details: string;
   readonly accountMask: string;
-  readonly status: 'SUBMITTED' | 'READY' | 'COLLECTED' | 'DECLINED';
+  readonly status: 'SUBMITTED' | 'READY' | 'COLLECTED' | 'GRANTED' | 'DECLINED';
   readonly submittedAt: string;
   /** Where the customer was told to collect it, in the staff member's own words. */
   readonly collectionPoint?: string;
+
+  /*
+   * WHAT THE CUSTOMER ASKED TO BORROW. Present only on a loan application, and absent even
+   * then if it was raised before the portal recorded terms as figures. The grant form opens
+   * on these; where they are missing it opens empty rather than on an invented default.
+   *
+   * THE ASK, NOT THE DECISION. The bank may lend something else.
+   */
+  readonly loanProduct?: string;
+  readonly loanAmount?: string;
+  readonly loanCurrency?: string;
+  readonly loanMonths?: number;
+}
+
+/** What a manager decided to lend, which need not be what was asked for. */
+export interface GrantLoanRequest {
+  readonly product: string;
+  /** A decimal string, never a number: see the note on the opening balance. */
+  readonly amount: string;
+  readonly currency: string;
+  readonly months: number;
+  /** Also a string on the wire, for the same reason as the amount. */
+  readonly annualRatePercent: string;
 }
 
 /* ------------------------------------------------------------------ outbox */
@@ -628,4 +728,61 @@ export interface PendingTransfer {
   readonly currency: string;
   readonly reference: string;
   readonly submittedAt: string;
+}
+
+/**
+ * One field of a pledged document, as the person deciding the loan needs to see it.
+ *
+ * THREE VALUES, NOT ONE. `declared` is what the customer typed and is what the bank holds
+ * them to; `read` is what a machine thought the page said; `agreement` is the verdict
+ * recorded when the application was submitted. Collapsing them into a single "value" is
+ * exactly the collapse this screen exists to prevent -- a reviewer who sees only the typed
+ * figure is reviewing a form, not a document.
+ *
+ * OPTIONAL, NOT NULLABLE, like every other absent field in this API: the service is
+ * configured with `default-property-inclusion: non_null`, so a null never arrives — the key
+ * is simply missing. A screen written against `=== null` would treat every absence as a
+ * value and render the word "undefined" where a dash belongs.
+ *
+ * `declared` is absent on a row from `alsoRead`: detail the reader found that the customer
+ * was never asked for and therefore never declared.
+ *
+ * `read` is absent when the reader found nothing for that field, which is `NOT_READ` and is
+ * not a disagreement.
+ */
+export interface PledgedField {
+  readonly key: string;
+  readonly label: string;
+  readonly declared?: string;
+  readonly read?: string;
+  readonly agreement: 'SAME' | 'DIFFERENT' | 'NOT_READ' | 'NOT_DECLARED';
+}
+
+/**
+ * One thing pledged against a loan application, with the document that evidences it.
+ *
+ * NOTHING HERE IS VERIFIED. The portal cannot ask the land authority whether a parcel
+ * number exists or who owns it, and a field marked SAME only means the customer typed what
+ * the page says. This is evidence put in front of a person, not a check the system passed.
+ *
+ * `text` is everything the reader produced, kept so a disagreement can be judged in context
+ * rather than from a one-line verdict. It is absent when nothing could be read at all.
+ */
+export interface PledgedItem {
+  readonly id: string;
+  readonly kind: string;
+  readonly kindLabel: string;
+  /** What document this kind of collateral is evidenced by, in the bank's words. */
+  readonly expectedDocument: string;
+  /** The customer's own words for the thing: "Plot at Kabeza", "Toyota Hiace". */
+  readonly description: string;
+  readonly documentId: string;
+  readonly filename: string;
+  readonly sizeBytes: number;
+  readonly ocrStatus: 'READ' | 'UNREADABLE' | 'FAILED';
+  /** The document's own heading, lifted off the page. Absent when none was legible. */
+  readonly heading?: string;
+  readonly fields: readonly PledgedField[];
+  readonly alsoRead: readonly PledgedField[];
+  readonly text?: string;
 }

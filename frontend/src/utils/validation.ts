@@ -98,6 +98,36 @@ export function digits(value: string, length: number, fieldLabel: string): strin
 }
 
 /** Digits-only field within a length range. */
+/**
+ * A bank account number, as Zigama actually issues them.
+ *
+ * NOT `digitsBetween`, which is what this field used before and which rejected every real
+ * account number the bank has. Zigama's numbers are two letters and nine digits --
+ * AC100000001 through AC100000200 across all two hundred records in the core system --
+ * so a digits-only rule turned away every genuine client at the first field.
+ *
+ * DELIBERATELY WIDER THAN THE DATA. Accepting exactly `AC` and nine digits would match
+ * today's records and nothing else, and a bank that opens a new product series would be
+ * locked out of its own portal by a regular expression. The real check happens later,
+ * against the core system, where a wrong number is answered properly; this one is here to
+ * catch an empty box and a typed sentence, not to be the authority on what the bank
+ * numbers its accounts.
+ *
+ * Case is not enforced: somebody typing "ac100000001" into a form on a phone has not made
+ * a mistake worth an error message, and the lookup is case-insensitive anyway.
+ */
+export function bankAccountNumber(value: string, fieldLabel: string): string | undefined {
+  const cleaned = value.replace(/\s/g, '');
+  if (cleaned === '') return `${fieldLabel} is required.`;
+  if (!/^[A-Za-z0-9]+$/.test(cleaned)) {
+    return `${fieldLabel} can only contain letters and numbers.`;
+  }
+  if (cleaned.length < 8 || cleaned.length > 20) {
+    return `${fieldLabel} does not look right. It looks like AC100000001.`;
+  }
+  return undefined;
+}
+
 export function digitsBetween(
   value: string,
   min: number,

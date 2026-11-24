@@ -1,6 +1,7 @@
 package rw.bank.ibanking.onboarding.web;
 
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +9,14 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +26,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import rw.bank.ibanking.collateral.CollateralDocumentEntity;
+import rw.bank.ibanking.collateral.CollateralFieldKey;
+import rw.bank.ibanking.collateral.CollateralService;
+import rw.bank.ibanking.collateral.FieldReader;
+import rw.bank.ibanking.common.money.Money;
 import rw.bank.ibanking.onboarding.domain.AccountType;
 import rw.bank.ibanking.onboarding.domain.ApplicationEntity;
 import rw.bank.ibanking.onboarding.domain.ApplicationStatus;
@@ -26,7 +39,9 @@ import rw.bank.ibanking.onboarding.domain.CustomerEntity;
 import rw.bank.ibanking.onboarding.domain.CustomerStatus;
 import rw.bank.ibanking.onboarding.domain.OutboxEntity;
 import rw.bank.ibanking.onboarding.repo.CustomerAccountRepository;
+import rw.bank.ibanking.onboarding.domain.CardType;
 import rw.bank.ibanking.onboarding.service.BeneficiaryService;
+import rw.bank.ibanking.onboarding.service.CardService;
 import rw.bank.ibanking.onboarding.service.OnboardingService;
 import rw.bank.ibanking.onboarding.service.PasswordResetService;
 import rw.bank.ibanking.onboarding.service.ServiceRequestService;
@@ -53,6 +68,7 @@ class AdminController {
     private final PasswordResetService passwordResets;
     private final BeneficiaryService beneficiaries;
     private final ServiceRequestService serviceRequests;
+    private final CollateralService collateral;
 
     AdminController(
             OnboardingService onboarding,
@@ -61,7 +77,8 @@ class AdminController {
             CustomerAccountRepository customerAccounts,
             PasswordResetService passwordResets,
             BeneficiaryService beneficiaries,
-            ServiceRequestService serviceRequests) {
+            ServiceRequestService serviceRequests,
+            CollateralService collateral) {
         this.onboarding = onboarding;
         this.staff = staff;
         this.transfers = transfers;
@@ -69,6 +86,7 @@ class AdminController {
         this.passwordResets = passwordResets;
         this.beneficiaries = beneficiaries;
         this.serviceRequests = serviceRequests;
+        this.collateral = collateral;
     }
 
     /* ------------------------------------------------------------- shapes */
@@ -431,15 +449,21 @@ class AdminController {
 
     record NewAccountDto(
             /*
-             * The real number, read off the bank's records by the administrator. Digits
-             * only, 10 to 16, matching the registration form — THE SAME GUESS as that one,
-             * and if Zigama's real numbers are a different shape this turns real accounts
-             * away. See docs/OPEN-ITEMS.md.
+             * The real number, read off the bank's records by the administrator.
+             *
+             * WAS \d{10,16}, and the comment here called it a guess shared with the
+             * registration form. The core system has since settled it: Zigama's numbers
+             * are AC100000001 through AC100000200, two letters and nine digits, so the
+             * digits-only rule refused every real account at the counter as well as at
+             * registration. Both now accept letters and digits, and both stay wider than
+             * today's data so a new product series does not need a code change.
              */
             @NotBlank(message = "Enter the account number.")
                     @Pattern(
-                            regexp = "\\d{10,16}",
-                            message = "An account number is 10 to 16 digits.")
+                            regexp = "[A-Za-z0-9]{8,20}",
+                            message =
+                                    "An account number is 8 to 20 letters and numbers, like"
+                                            + " AC100000001.")
                     String accountNumber,
             @NotNull(message = "Choose an account type.") AccountType accountType,
             /*
@@ -945,6 +969,124 @@ class AdminController {
      * <p>Carries the ACCOUNT MASK rather than the account id, for the same reason every
      * other staff screen does: this is a dense screen in an open-plan office.
      */
+    /* ------------------------------------------------- collateral, before approving */
+
+    /**
+     * One pledged item as a reviewer needs to see it.
+     *
+     * @param declared what the customer typed, which is what the bank holds them to
+     * @param read what the reader found on the page at the time, which is evidence of nothing
+     *     on its own
+     * @param agreement whether the two matched when the application was submitted
+     */
+    record PledgedFieldView(
+            String key, String label, String declared, String read, String agreement) {}
+
+    record PledgedItemView(
+            String id,
+            String kind,
+            String kindLabel,
+            String expectedDocument,
+            String description,
+            String documentId,
+            String filename,
+            int sizeBytes,
+            String ocrStatus,
+            /** The document's own heading, lifted off the page. */
+            String heading,
+            List<PledgedFieldView> fields,
+            /** Detail read off the page that the customer never typed and never declared. */
+            List<PledgedFieldView> alsoRead,
+            /** Everything the reader produced, so a disagreement can be judged in context. */
+            String text) {}
+
+    /**
+     * What was pledged against one application.
+     *
+     * <p>ITS OWN REQUEST, NOT PART OF THE QUEUE. Re-reading the stored text and pulling the
+     * document's metadata for every row of the open-requests list would make that list pay for
+     * detail nobody is looking at. A reviewer opens one application at a time.
+     *
+     * <p>EITHER ROLE, matching the grant endpoint below it: whoever may approve the loan must
+     * be able to see what is securing it, or the approval is made blind.
+     */
+    @GetMapping("/service-requests/{id}/collateral")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    List<PledgedItemView> collateralFor(@PathVariable UUID id) {
+        return collateral.pledgedAgainst(id).stream()
+                .map(
+                        pledge -> {
+                            CollateralDocumentEntity document =
+                                    collateral.documentById(pledge.documentId());
+
+                            Map<CollateralFieldKey, String> extra =
+                                    CollateralService.extraOf(document);
+
+                            return new PledgedItemView(
+                                    pledge.id().toString(),
+                                    pledge.kind().name(),
+                                    pledge.kind().label(),
+                                    pledge.kind().document(),
+                                    pledge.description(),
+                                    document.id().toString(),
+                                    document.originalFilename(),
+                                    document.sizeBytes(),
+                                    document.ocrStatus().name(),
+                                    FieldReader.heading(document.ocrText()),
+                                    collateral.fieldsOfPledge(pledge.id()).stream()
+                                            .map(
+                                                    field ->
+                                                            new PledgedFieldView(
+                                                                    field.fieldKey().name(),
+                                                                    field.fieldKey().label(),
+                                                                    field.declaredValue(),
+                                                                    field.readValue(),
+                                                                    field.agreement().name()))
+                                            .toList(),
+                                    document.kind().alsoRead().stream()
+                                            .filter(extra::containsKey)
+                                            .map(
+                                                    key ->
+                                                            new PledgedFieldView(
+                                                                    key.name(),
+                                                                    key.label(),
+                                                                    null,
+                                                                    extra.get(key),
+                                                                    "NOT_DECLARED"))
+                                            .toList(),
+                                    document.ocrText());
+                        })
+                .toList();
+    }
+
+    /**
+     * The pledged document itself, to a member of staff.
+     *
+     * <p>A SEPARATE ENDPOINT FROM THE CUSTOMER'S, deliberately, because the ownership check is
+     * the opposite one. The customer's version will only serve a document to the person who
+     * uploaded it; this one serves any document to somebody entitled to review applications,
+     * and the two must not be one method with a branch in it.
+     *
+     * <p>ALWAYS AN ATTACHMENT, never inline, with sniffing off — the bytes came from outside.
+     */
+    @GetMapping("/collateral/documents/{documentId}/file")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    ResponseEntity<Resource> collateralFile(@PathVariable UUID documentId) {
+        CollateralDocumentEntity document = collateral.documentById(documentId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header("X-Content-Type-Options", "nosniff")
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(document.originalFilename())
+                                .build()
+                                .toString())
+                .contentLength(document.sizeBytes())
+                .body(new ByteArrayResource(document.content()));
+    }
+
     record ServiceRequestItem(
             String id,
             String reference,
@@ -957,10 +1099,28 @@ class AdminController {
             String accountMask,
             String status,
             String submittedAt,
-            String collectionPoint) {
+            String collectionPoint,
+            /*
+             * WHAT THE CUSTOMER ASKED TO BORROW, so the grant form opens on their figures
+             * instead of on empty boxes somebody has to copy out of the sentence beside it.
+             *
+             * ALL THREE ARE NULL unless this is a loan application. They are also null on an
+             * application raised before V29 recorded terms as numbers; the screen then shows
+             * the fields empty rather than inventing a default, because a pre-filled amount
+             * nobody asked for is the one most likely to be approved without being read.
+             *
+             * THE ASK, NOT THE DECISION. Staff may grant something else entirely, and what
+             * they grant is what they send back.
+             */
+            String loanProduct,
+            String loanAmount,
+            String loanCurrency,
+            Integer loanMonths) {
 
         static ServiceRequestItem of(ServiceRequestService.Queued queued) {
             var request = queued.request();
+            var asked = request.loanAmount();
+
             return new ServiceRequestItem(
                     request.id().toString(),
                     request.reference(),
@@ -973,7 +1133,11 @@ class AdminController {
                     queued.accountMask(),
                     request.status().name(),
                     request.submittedAt().toString(),
-                    request.collectionPoint());
+                    request.collectionPoint(),
+                    request.loanProduct().orElse(null),
+                    asked.map(Money::toPlainString).orElse(null),
+                    asked.map(Money::currency).orElse(null),
+                    request.loanMonths().orElse(null));
         }
     }
 
@@ -1007,17 +1171,71 @@ class AdminController {
 
         var ready =
                 serviceRequests.markReady(
-                        id, request.collectionPoint(), staff.require(caller.getName()));
+                        id,
+                        request.collectionPoint(),
+                        request.issuedCard(),
+                        staff.require(caller.getName()));
         return ServiceRequestItem.of(serviceRequests.queued(ready));
     }
 
+    /**
+     * Where to collect it, and -- for a card -- what was produced.
+     *
+     * <p>ONLY FOUR DIGITS ARE ACCEPTED, enforced by the pattern below and again in
+     * CardService. The portal has nowhere to put a full card number: there is no column for
+     * one in V23 and no code path that would reach it. A member of staff who pastes a whole
+     * PAN here is refused rather than quietly truncated, because truncating would mean this
+     * service held the rest of it, however briefly, and logged the request that carried it.
+     *
+     * <p>THE CARD FIELDS ARE ALL-OR-NOTHING. Four of them describe one object, and a request
+     * carrying two of them is a half-filled form that would otherwise be stored as a card
+     * nobody can identify.
+     */
     record CollectionPointRequest(
             @NotBlank(
                             message =
                                     "Say where the customer should collect it. The portal has no"
                                             + " branch list of its own and must not guess one.")
                     @Size(max = 120)
-                    String collectionPoint) {}
+                    String collectionPoint,
+            @Pattern(
+                            regexp = "\\d{4}",
+                            message =
+                                    "Enter the last four digits of the card, and only those four.")
+                    String cardLastFour,
+            @Size(max = 32) String cardBrand,
+            CardType cardType,
+            Integer cardExpiryMonth,
+            Integer cardExpiryYear) {
+
+        /** The card details as one object, or null when this is not a card being recorded. */
+        CardService.IssuedCard issuedCard() {
+            boolean any =
+                    cardLastFour != null
+                            || cardBrand != null
+                            || cardType != null
+                            || cardExpiryMonth != null
+                            || cardExpiryYear != null;
+
+            if (!any) return null;
+
+            boolean all =
+                    cardLastFour != null
+                            && cardBrand != null
+                            && cardType != null
+                            && cardExpiryMonth != null
+                            && cardExpiryYear != null;
+
+            if (!all) {
+                throw new rw.bank.ibanking.exception.BusinessRuleException(
+                        "To record a card, give its last four digits, brand, type and expiry"
+                                + " date together.");
+            }
+
+            return new CardService.IssuedCard(
+                    cardLastFour, cardBrand, cardType, cardExpiryMonth, cardExpiryYear);
+        }
+    }
 
     /** Records that it was handed over. No email: the customer is at the counter. */
     @PostMapping("/service-requests/{id}/collected")
@@ -1027,6 +1245,75 @@ class AdminController {
 
         var collected = serviceRequests.markCollected(id, staff.require(caller.getName()));
         return ServiceRequestItem.of(serviceRequests.queued(collected));
+    }
+
+    /**
+     * Grants a loan application: creates the loan, pays it in, closes the application.
+     *
+     * <p>THE FIGURES ARE SENT, not inferred. The application carries what was asked for and
+     * this carries what the bank decided; they are usually the same and the difference is the
+     * whole reason a person looks at the screen.
+     *
+     * <p>THE AMOUNT IS A DECIMAL STRING against a currency, like every other money field
+     * here. See the note on MoneyIn: a number that has been through JavaScript's floating
+     * point is not a figure this project will lend against.
+     */
+    record GrantLoanRequest(
+            @NotBlank(message = "Choose the loan product.") @Size(max = 32) String product,
+            @NotBlank(message = "Enter the amount to lend.")
+                    @Pattern(
+                            regexp = "\\d{1,15}(\\.\\d{1,2})?",
+                            message = "Enter an amount such as 500000 or 500000.50.")
+                    String amount,
+            @NotBlank(message = "Give the currency.")
+                    @Pattern(
+                            regexp = "[A-Za-z]{3}",
+                            message = "A currency is a three-letter code, such as RWF.")
+                    String currency,
+            @NotNull(message = "Enter the number of months.") Integer months,
+            /*
+             * A STRING ON THE WIRE for the same reason the amount is: a rate that has been
+             * through a client's floating point arrives as 16.299999999999997, and that is a
+             * number nobody agreed to. Parsed to BigDecimal exactly, below.
+             */
+            @NotBlank(message = "Enter the interest rate.")
+                    @Pattern(
+                            /*
+                             * THREE DECIMALS, because that is the column's scale. A fourth
+                             * would be rounded away by Postgres without anybody being told,
+                             * and a rate is not a figure to round silently. The upper bound
+                             * is the service's, where it can be explained.
+                             */
+                            regexp = "\\d{1,3}(\\.\\d{1,3})?",
+                            message = "Enter a rate such as 16 or 16.5.")
+                    String annualRatePercent) {
+
+        Money toMoney() {
+            return Money.parse(amount, currency);
+        }
+
+        BigDecimal rate() {
+            return new BigDecimal(annualRatePercent);
+        }
+    }
+
+    @PostMapping("/service-requests/{id}/grant-loan")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    ServiceRequestItem grantLoan(
+            @PathVariable UUID id,
+            @Valid @RequestBody GrantLoanRequest request,
+            Authentication caller) {
+
+        var granted =
+                serviceRequests.grantLoan(
+                        id,
+                        request.product(),
+                        request.toMoney(),
+                        request.months(),
+                        request.rate(),
+                        staff.require(caller.getName()));
+
+        return ServiceRequestItem.of(serviceRequests.queued(granted));
     }
 
     /** Declines it. The reason is shown and emailed to the customer, so it is required. */

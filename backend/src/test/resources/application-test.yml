@@ -40,6 +40,37 @@ spring:
     exclude: org.springframework.boot.session.jdbc.autoconfigure.JdbcSessionAutoConfiguration
 
 ibanking:
+  mail:
+    # OFF FOR THE WHOLE SUITE, AS A LITERAL.
+    #
+    # Not `${MAIL_ENABLED:false}`: backend/.env sets MAIL_ENABLED=true and Spring Boot
+    # reads it in tests too, so a placeholder here would be overridden and the suite
+    # would go on posting live mail to its own fixture addresses. .env names
+    # MAIL_ENABLED and nothing else, so stating this key outright puts it out of reach.
+    #
+    # The suite covers what mail DOES through the outbox rows, which are written whether
+    # or not anything is sent, and through MailerTest, which drives the sender directly
+    # with its own properties. Nothing here needs a socket.
+    enabled: false
+
+    brevo:
+      # Same reasoning. With BREVO_ENABLED=true in an environment, the HTTP sender would
+      # take over and the suite would post to Brevo's API instead of Gmail's SMTP --
+      # a different account to get rate-limited, the same mistake.
+      enabled: false
+
+  registration:
+    # ON FOR THE TESTS, even though it ships off, for exactly the reason stated under
+    # sign-in below.
+    #
+    # application.yml sets verify-contact to false while verification moves from email to
+    # SMS, and the test profile inherits that file. Leaving it inherited would have
+    # switched the whole code path off for the suite -- every registration test would
+    # still pass, because the flow still completes, and not one of them would be
+    # exercising the codes, the attempt counter or the rate limit any more. A suite that
+    # goes green while testing nothing is worse than one that fails.
+    verify-contact: true
+
   sign-in:
     # ON FOR THE TESTS, even though it ships off.
     #

@@ -184,7 +184,14 @@ export interface FxQuote {
   readonly quoteId: string;
   readonly sellAmount: MoneyDto;
   readonly buyAmount: MoneyDto;
-  /** Decimal string, e.g. `1285.40`. Quoted by the bank, never derived here. */
+  /**
+   * The rate as a sentence with its units, e.g. `1 USD = 1,450.00 RWF`.
+   *
+   * NOT A BARE DECIMAL. "1,450" does not say which way round it runs, and the direction is
+   * the whole meaning: it is a sensible price for a dollar and an absurd one for a franc.
+   * Composed by the bank from the two amounts actually quoted, so it cannot describe a
+   * different trade from the one being offered. Never derived here.
+   */
   readonly rate: string;
   readonly rateExpiresAt: string;
   readonly fee: MoneyDto;
@@ -192,16 +199,46 @@ export interface FxQuote {
 
 /* ------------------------------------------------------------------ standing orders */
 
-export type StandingOrderFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
+/*
+ * EVERY_2_MINUTES IS A REAL FREQUENCY, not a debug switch.
+ *
+ * Standing orders are the only way money leaves an account in this portal without a manager
+ * releasing it, which makes them the thing most worth watching before trusting -- and a
+ * monthly order can be watched once a month. This runs the identical server path at a speed
+ * somebody can sit through. It is in the database's CHECK constraint, it survives a restart,
+ * and it is shown to the customer like any other.
+ */
+export type StandingOrderFrequency = 'EVERY_2_MINUTES' | 'WEEKLY' | 'MONTHLY' | 'QUARTERLY';
+
+/**
+ * How each frequency is worded, everywhere it is shown.
+ *
+ * ONE MAP, BESIDE THE UNION IT BELONGS TO. There were three copies of this -- the list, the
+ * detail page and the setup form -- and adding a frequency updated one of them, so the list
+ * showed a customer the raw constant EVERY_2_MINUTES while the form beside it read "Every 2
+ * minutes". Typing it as Record<StandingOrderFrequency, string> is what stops that
+ * recurring: a new frequency with no wording is a compile error rather than a screen.
+ */
+export const STANDING_ORDER_FREQUENCY_LABELS: Record<StandingOrderFrequency, string> = {
+  EVERY_2_MINUTES: 'Every 2 minutes (for testing)',
+  WEEKLY: 'Every week',
+  MONTHLY: 'Every month',
+  QUARTERLY: 'Every three months',
+};
 
 export interface StandingOrder {
   readonly id: string;
   readonly reference: string;
   readonly sourceAccountMask: string;
+  /** The product, e.g. "Current". Every account a customer holds shares one number, so the
+   * mask alone cannot tell two of them apart. */
+  readonly sourceAccountName: string;
+  /** The destination product and mask, already combined by the server. */
   readonly destinationSummary: string;
   readonly amount: MoneyDto;
   readonly frequency: StandingOrderFrequency;
-  readonly nextRunOn: string;
+  /** An ISO-8601 instant, not a date: a two-minute order is due at a time. */
+  readonly nextRunAt: string;
   readonly endsOn?: string;
   readonly status: 'ACTIVE' | 'PAUSED' | 'ENDED';
   readonly ownerId: string;
@@ -209,33 +246,47 @@ export interface StandingOrder {
 
 export interface StandingOrderRequest {
   readonly sourceAccountId: string;
-  readonly beneficiaryId: string;
+  /** Another of the customer's own accounts, by id. */
+  readonly destinationAccountId: string;
   readonly amount: MoneyDto;
   readonly frequency: StandingOrderFrequency;
-  readonly startOn: string;
+  /** Omitted for a frequency shorter than a day, which has no start date to give. */
+  readonly startOn?: string;
   readonly endsOn?: string;
   readonly reference: string;
 }
 
 /* ------------------------------------------------------------------ statements */
 
+/**
+ * A statement the customer has already taken.
+ *
+ * NO `status`. Generating is synchronous, so a statement in this list exists because a
+ * document was produced; a status could only ever read READY, and a field that always says
+ * the same thing invites somebody to believe it means something.
+ */
 export interface Statement {
   readonly id: string;
-  readonly accountId: string;
-  readonly accountMask: string;
+  /** Null when this covers every account the customer holds. */
+  readonly accountId: string | null;
+  readonly scope: 'ONE_ACCOUNT' | 'ALL_ACCOUNTS';
+  /** Already readable: "All accounts", or the product and its mask. Named by the server. */
+  readonly accountLabel: string;
   readonly periodFrom: string;
   readonly periodTo: string;
-  readonly format: 'PDF' | 'CSV';
+  readonly format: StatementFormat;
   readonly requestedAt: string;
-  readonly status: 'REQUESTED' | 'GENERATING' | 'READY' | 'FAILED';
-  readonly sizeBytes?: number;
+  readonly sizeBytes: number;
 }
 
+export type StatementFormat = 'PDF' | 'CSV';
+
 export interface StatementRequest {
-  readonly accountId: string;
+  /** Omitted for every account the customer holds. */
+  readonly accountId?: string;
   readonly from: string;
   readonly to: string;
-  readonly format: 'PDF' | 'CSV';
+  readonly format: StatementFormat;
 }
 
 /*

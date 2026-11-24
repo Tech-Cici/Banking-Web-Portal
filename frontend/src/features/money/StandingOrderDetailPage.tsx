@@ -4,15 +4,10 @@ import { Alert, Button, ErrorNotice, PageHeader, ReviewPanel, Skeleton, StatusBa
 import { useAsync } from '@/hooks/useAsync';
 import { RETAIL_PATHS } from '@/routes/paths';
 import { standingOrderService } from '@/services';
-import { formatDate } from '@/utils/datetime';
+import { STANDING_ORDER_FREQUENCY_LABELS } from '@/types/movement';
+import { formatDate, formatDateTime } from '@/utils/datetime';
 import { formatMoneyDto } from '@/utils/money';
 import './money.css';
-
-const FREQUENCY: Readonly<Record<string, string>> = {
-  WEEKLY: 'Every week',
-  MONTHLY: 'Every month',
-  QUARTERLY: 'Every three months',
-};
 
 /**
  * One standing order, with the controls that change it.
@@ -77,7 +72,7 @@ export function StandingOrderDetailPage(): ReactElement {
     <article className="money">
       <PageHeader
         title={order.destinationSummary}
-        lead={`${FREQUENCY[order.frequency] ?? order.frequency} · ${formatMoneyDto(order.amount)}`}
+        lead={`${STANDING_ORDER_FREQUENCY_LABELS[order.frequency]} · ${formatMoneyDto(order.amount)}`}
         crumbs={[{ label: 'Standing orders', to: RETAIL_PATHS.standingOrders }]}
         action={
           <StatusBadge tone={toneForStatus(order.status)} label={humaniseStatus(order.status)} />
@@ -92,13 +87,13 @@ export function StandingOrderDetailPage(): ReactElement {
         caption="Standing order details"
         rows={[
           { label: 'Reference', value: order.reference },
-          { label: 'From', value: order.sourceAccountMask },
-          { label: 'To', value: order.destinationSummary },
+          { label: 'From', value: `${order.sourceAccountName} · ${order.sourceAccountMask}` },
+          { label: 'Into', value: order.destinationSummary },
           { label: 'Amount each time', value: formatMoneyDto(order.amount) },
-          { label: 'How often', value: FREQUENCY[order.frequency] ?? order.frequency },
+          { label: 'How often', value: STANDING_ORDER_FREQUENCY_LABELS[order.frequency] },
           {
             label: 'Next payment',
-            value: order.status === 'ACTIVE' ? formatDate(order.nextRunOn) : 'Not scheduled',
+            value: order.status === 'ACTIVE' ? formatDateTime(order.nextRunAt) : 'Not scheduled',
           },
           { label: 'Ends', value: order.endsOn === undefined ? 'No end date' : formatDate(order.endsOn) },
         ]}

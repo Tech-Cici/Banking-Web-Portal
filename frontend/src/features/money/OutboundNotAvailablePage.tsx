@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, PageHeader } from '@/components/ui';
+import { BRAND } from '@/config/brand';
 import { RETAIL_PATHS } from '@/routes/paths';
 import './money.css';
 
@@ -63,7 +64,7 @@ export function OutboundNotAvailablePage({
       <Alert tone="info" title="What does work">
         <p>
           You can move money between your own accounts, and to anyone else with an
-          account in this demonstration, by their account number.{' '}
+          account at {BRAND.SHORT}, by their account number.{' '}
           <Link to={RETAIL_PATHS.transferInternal}>Send money</Link>.
         </p>
       </Alert>

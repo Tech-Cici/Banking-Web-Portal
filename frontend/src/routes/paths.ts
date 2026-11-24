@@ -101,6 +101,7 @@ export const RETAIL_PATHS = {
   loanSimulation: '/loans/simulation',
   loanRequest: '/loans/request',
   loanStatements: '/loans/:loanId/statements',
+  loanRepay: '/loans/:loanId/repay',
 
   cards: '/cards',
   cardRequest: '/cards/request',
@@ -184,6 +185,7 @@ export const routeTo = {
   fxReview: (quoteId: string): string => fill(RETAIL_PATHS.fxReview, { quoteId }),
   loanDetail: (loanId: string): string => fill(RETAIL_PATHS.loanDetail, { loanId }),
   loanStatements: (loanId: string): string => fill(RETAIL_PATHS.loanStatements, { loanId }),
+  loanRepay: (loanId: string): string => fill(RETAIL_PATHS.loanRepay, { loanId }),
   cardRequestStatus: (id: string): string => fill(RETAIL_PATHS.cardRequestStatus, { id }),
   cardBlock: (id: string): string => fill(RETAIL_PATHS.cardBlock, { id }),
   approvalDetail: (id: string): string => fill(CORPORATE_PATHS.approvalDetail, { id }),

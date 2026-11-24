@@ -8,7 +8,6 @@ import type {
   Statement,
 } from '@/types/movement';
 import { accountsFor, accountById } from './data/accounts';
-import { beneficiariesFor } from './data/banking';
 import {
   BILLERS,
   billerById,
@@ -312,6 +311,39 @@ function money(source: Record<string, unknown>, field: string): MoneyDto {
 
 /* ------------------------------------------------------------------ handlers */
 
+/**
+ * A CSV statement the mock can honestly produce.
+ *
+ * <p>HEADER AND NOTHING ELSE, because this fixture holds no ledger: the mock's transactions
+ * live behind a different handler keyed to a persona, and stitching them together here would
+ * be building a second statement engine to test the first one. The columns match the real
+ * CSV so a screen reading the file sees the right shape.
+ */
+function mockStatementCsv(record: Statement): string {
+  return (
+    '\uFEFFAccount,Account number,Currency,Date,Description,Other party,Money out,Money in,Balance\r\n' +
+    `# mock statement for ${record.accountLabel}, ${record.periodFrom} to ${record.periodTo}\r\n`
+  );
+}
+
+/** The same headers the real endpoint sends, so the client saves a file either way. */
+/*
+ * RETURNS Response, NOT HttpResponse<string>. A handler that can answer either with a file or
+ * with an error envelope has two body types, and MSW infers the resolver's type from them;
+ * naming the narrower one makes the error branch a type error. Response is what they have in
+ * common and what MSW accepts.
+ */
+function statementDownload(csv: string, record: Statement): Response {
+  return new HttpResponse(csv, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="statement-${record.periodFrom}-to-${record.periodTo}.csv"`,
+      'Cache-Control': 'no-store',
+    },
+  });
+}
+
 export const movementHandlers = [
   /* ---------------------------------------------- transfers */
 
@@ -503,45 +535,58 @@ export const movementHandlers = [
 
     const payload = await body(request);
     const source = accountById(str(payload, 'sourceAccountId'));
-    const beneficiary = beneficiariesFor(active.user.id).find(
-      (b) => b.id === str(payload, 'beneficiaryId'),
-    );
+    const destination = accountById(str(payload, 'destinationAccountId'));
 
-    if (source === undefined || beneficiary === undefined) {
+    if (source === undefined || destination === undefined) {
       return mockApiError(
         404,
         'NOT_FOUND',
-        'We could not find that account or that saved payee. Check your list and try again.',
+        'We could not find one of those accounts on your profile.',
       );
     }
 
     /*
-     * AN UNAPPROVED PAYEE IS REFUSED HERE, not only hidden from the picker.
+     * THE CURRENT-ACCOUNT RULE IS CHECKED HERE, not only applied by the picker.
      *
-     * The screen already filters its list to ACTIVE payees, and that filter is a
-     * convenience rather than a control: a request built by anything other than that
-     * screen bypassed it completely. This is the same check the real service applies to a
-     * transfer, and it is here so the mock cannot be the reason a missing server-side
-     * check goes unnoticed in development.
+     * The screen already offers current accounts alone, and that filter is a convenience
+     * rather than a control: a request built by anything other than that screen bypassed it
+     * completely. The real service refuses this independently, and the mock refuses it too
+     * so that development cannot be the place where a missing server-side check looks fine.
      */
-    if (beneficiary.status !== 'ACTIVE') {
+    if (source.accountType !== 'CURRENT') {
       return mockApiError(
         422,
         'BUSINESS_RULE_VIOLATION',
-        beneficiary.status === 'REFUSED'
-          ? 'We were not able to approve that payee, so it cannot be paid. There is a reason on your payee list.'
-          : 'That payee is still being checked by the bank, so it cannot be paid yet. You will be emailed when it is done.',
+        'A standing order pays from your current account. Choose that as the account the money comes from.',
       );
     }
 
+    if (source.id === destination.id) {
+      return mockApiError(
+        422,
+        'BUSINESS_RULE_VIOLATION',
+        'A standing order cannot pay the account it comes from.',
+      );
+    }
+
+    const frequency = (str(payload, 'frequency') || 'MONTHLY') as StandingOrder['frequency'];
+
+    /* Sub-daily orders carry no start date, exactly as the server treats them. */
+    const startOn = str(payload, 'startOn');
+    const nextRunAt =
+      frequency === 'EVERY_2_MINUTES' || startOn === ''
+        ? new Date().toISOString()
+        : new Date(`${startOn}T00:00:00+02:00`).toISOString();
+
     const created: StandingOrder = {
       id: crypto.randomUUID(),
-      reference: `SO-2026-${String(Math.abs(hash(beneficiary.id + Date.now().toString())) % 100000).padStart(5, '0')}`,
+      reference: `SO-2026-${String(Math.abs(hash(destination.id + Date.now().toString())) % 100000).padStart(5, '0')}`,
       sourceAccountMask: source.maskedNumber,
-      destinationSummary: `${beneficiary.name} — ${beneficiary.maskedDestination}`,
+      sourceAccountName: source.nickname,
+      destinationSummary: `${destination.nickname} · ${destination.maskedNumber}`,
       amount: money(payload, 'amount'),
-      frequency: (str(payload, 'frequency') || 'MONTHLY') as StandingOrder['frequency'],
-      nextRunOn: str(payload, 'startOn'),
+      frequency,
+      nextRunAt,
       ...(str(payload, 'endsOn') === '' ? {} : { endsOn: str(payload, 'endsOn') }),
       status: 'ACTIVE',
       ownerId: active.user.id,
@@ -596,14 +641,23 @@ export const movementHandlers = [
     if (active === null) return unauthenticated();
 
     const payload = await body(request);
-    const account = accountById(str(payload, 'accountId'));
 
-    if (account === undefined || !visibleAccountIds(active.user.id).includes(account.id)) {
-      return mockApiError(
-        404,
-        'NOT_FOUND',
-        'We could not find that account. It may have been closed, or it may not be one of yours.',
-      );
+    /*
+     * AN ABSENT ACCOUNT MEANS ALL OF THEM, matching the real endpoint. It is not a missing
+     * field to reject: a customer whose accounts all share one customer number usually wants
+     * every product at once, so the absence is the request.
+     */
+    const requested = str(payload, 'accountId');
+    const account = requested === '' ? undefined : accountById(requested);
+
+    if (requested !== '') {
+      if (account === undefined || !visibleAccountIds(active.user.id).includes(account.id)) {
+        return mockApiError(
+          404,
+          'NOT_FOUND',
+          'We could not find that account. It may have been closed, or it may not be one of yours.',
+        );
+      }
     }
 
     const from = str(payload, 'from');
@@ -630,21 +684,64 @@ export const movementHandlers = [
       );
     }
 
+    const format = str(payload, 'format') === 'CSV' ? 'CSV' : 'PDF';
+
+    /*
+     * THE MOCK CANNOT RENDER A PDF, and says so rather than producing something.
+     *
+     * The real endpoint lays a statement out with PDFBox on the server. There is no honest
+     * browser-side equivalent, and the dishonest options are both worse than refusing: a
+     * file of CSV bytes named .pdf is one a customer's reader cannot open, and an empty PDF
+     * is a statement that says nothing happened.
+     *
+     * `statements` is in VITE_LIVE_API, so in normal development this handler is never
+     * reached -- the request goes to the backend. It matters only if somebody takes the
+     * prefix out, and then it should explain itself rather than fail oddly.
+     */
+    if (format === 'PDF') {
+      return mockApiError(
+        503,
+        'UPSTREAM_UNAVAILABLE',
+        'Statement PDFs are produced by the backend. Run the API and keep "statements" in VITE_LIVE_API, or choose CSV to see the mock version.',
+      );
+    }
+
     const created: Statement = {
       id: crypto.randomUUID(),
-      accountId: account.id,
-      accountMask: account.maskedNumber,
+      accountId: account?.id ?? null,
+      scope: account === undefined ? 'ALL_ACCOUNTS' : 'ONE_ACCOUNT',
+      accountLabel: account === undefined ? 'All accounts' : `${account.nickname} ${account.maskedNumber}`,
       periodFrom: from,
       periodTo: to,
-      format: str(payload, 'format') === 'CSV' ? 'CSV' : 'PDF',
+      format,
       requestedAt: new Date().toISOString(),
-      // Not READY: a statement is produced by a batch, and pretending otherwise would
-      // hide the waiting state the real screen has to handle.
-      status: 'GENERATING',
+      sizeBytes: 0,
     };
 
-    STATEMENTS.unshift(created);
-    return HttpResponse.json(created, { status: 201 });
+    const file = mockStatementCsv(created);
+    STATEMENTS.unshift({ ...created, sizeBytes: file.length });
+
+    return statementDownload(file, created);
+  }),
+
+  /** The same statement again, exactly as the real endpoint re-renders it. */
+  http.get(`${API}/statements/:id/download`, ({ params }) => {
+    const active = persona();
+    if (active === null) return unauthenticated();
+
+    const record = STATEMENTS.find((item) => item.id === String(params['id']));
+    if (record === undefined) {
+      return mockApiError(404, 'NOT_FOUND', 'We could not find that statement.');
+    }
+    if (record.format === 'PDF') {
+      return mockApiError(
+        503,
+        'UPSTREAM_UNAVAILABLE',
+        'Statement PDFs are produced by the backend. Run the API with "statements" in VITE_LIVE_API.',
+      );
+    }
+
+    return statementDownload(mockStatementCsv(record), record);
   }),
 
   /* ---------------------------------------------- loans */

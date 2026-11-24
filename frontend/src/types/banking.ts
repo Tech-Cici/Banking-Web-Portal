@@ -215,6 +215,25 @@ export interface Card {
 
 /* ------------------------------------------------------------------ loans */
 
+/**
+ * The loan products the bank publishes, and how they are worded.
+ *
+ * ONE LIST. There were two copies on the calculator page alone and a staff screen was about
+ * to add a third, which is how a product comes to be called one thing where a customer
+ * applies and another where a manager approves. The codes must match the ones in the API's
+ * application.yml: a code this list invents is refused by the server as a product the bank
+ * does not publish.
+ */
+export const LOAN_PRODUCT_LABELS: Readonly<Record<string, string>> = {
+  PERSONAL: 'Personal loan',
+  SALARY_ADVANCE: 'Salary advance',
+  BUSINESS: 'Business loan',
+};
+
+/** The same list as Select options, in the order the bank lists them. */
+export const LOAN_PRODUCT_OPTIONS: readonly { readonly value: string; readonly label: string }[] =
+  Object.entries(LOAN_PRODUCT_LABELS).map(([value, label]) => ({ value, label }));
+
 export interface Loan {
   readonly id: string;
   readonly product: string;
@@ -227,6 +246,110 @@ export interface Loan {
   readonly interestRatePercent: string;
   readonly status: 'ACTIVE' | 'IN_ARREARS' | 'SETTLED';
   readonly ownerId: string;
+}
+
+/** One payment made against a loan, as the statement reads it. */
+export interface LoanRepayment {
+  readonly id: string;
+  readonly loanId: string;
+  readonly amount: MoneyDto;
+  /** The part that paid interest. It does not reduce what was borrowed. */
+  readonly interest: MoneyDto;
+  /** The part that reduced the balance. */
+  readonly capital: MoneyDto;
+  readonly outstandingAfter: MoneyDto;
+  readonly paidAt: string;
+}
+
+/**
+ * What a payment would do, worked out by the bank.
+ *
+ * NOT ONE FIGURE HERE IS THE BROWSER'S. The split between interest and capital depends on
+ * the rate and on what is outstanding at this moment; a number this screen calculated would
+ * be contradicted by the ledger a second later, which is a customer shown one amount and
+ * charged another.
+ */
+export interface LoanRepaymentPreview {
+  readonly amount: MoneyDto;
+  readonly interest: MoneyDto;
+  readonly capital: MoneyDto;
+  readonly outstandingBefore: MoneyDto;
+  readonly outstandingAfter: MoneyDto;
+  /** What would clear the loan today: the capital plus the interest owed on it. */
+  readonly settlementFigure: MoneyDto;
+  readonly settlesLoan: boolean;
+}
+
+/** The figures a repayment screen needs before the customer types an amount. */
+export interface LoanSettlement {
+  readonly outstanding: MoneyDto;
+  readonly instalment: MoneyDto;
+  readonly settlementFigure: MoneyDto;
+  readonly currency: string;
+}
+
+/* ------------------------------------------------------------- collateral */
+
+/**
+ * One kind of thing the bank takes as security, and the fields its document carries.
+ *
+ * SERVED BY THE API, NOT LISTED HERE. Which kinds exist, what each is called, which document
+ * the customer is asked to photograph and which fields are read off it are one list on the
+ * server. A copy in this file is how a field comes to be called one thing where it is typed
+ * and another where it is checked.
+ */
+export interface CollateralKindInfo {
+  readonly kind: string;
+  readonly label: string;
+  /** What the customer is asked to attach, e.g. "Land registration certificate". */
+  readonly document: string;
+  readonly fields: readonly CollateralFieldInfo[];
+}
+
+export interface CollateralFieldInfo {
+  readonly key: string;
+  readonly label: string;
+  readonly hint: string;
+  /**
+   * What the reader found, or null.
+   *
+   * A READING, NOT A FACT. It fills the box so the customer does not retype a seventeen
+   * character chassis number; they are expected to look at it and correct it, and what they
+   * submit is what the bank holds them to.
+   */
+  readonly value: string | null;
+}
+
+/** An uploaded document and what was read off it. */
+export interface CollateralDocument {
+  readonly id: string;
+  readonly kind: string;
+  readonly filename: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+  readonly ocrStatus: 'READ' | 'UNREADABLE' | 'FAILED';
+  /** Present only when the reader failed. Never the customer's fault; never blames them. */
+  readonly ocrFailure: string | null;
+  /** Enough of the reading for the customer to see why a field came back empty. */
+  readonly textPreview: string | null;
+  /** The document's own title, lifted off the top of the page. Null when none was found. */
+  readonly heading: string | null;
+  readonly fields: readonly CollateralFieldInfo[];
+  /**
+   * Detail the page gave up that nobody types and nobody declares — the district, the
+   * dates, the make of a vehicle.
+   *
+   * SHOWN, NEVER SUBMITTED. These carry the authority of a reading and nothing more, so
+   * they are not sent back with the application and are not compared against anything.
+   */
+  readonly alsoRead: readonly CollateralFieldInfo[];
+}
+
+/** One pledged item as the application submits it. */
+export interface CollateralEntry {
+  readonly documentId: string;
+  readonly description: string;
+  readonly values: Readonly<Record<string, string>>;
 }
 
 /* ------------------------------------------------------------------ approvals */
@@ -344,7 +467,16 @@ export interface Notification {
  * generated on demand, and neither is a thing somebody collects from a counter. The server
  * returns CARD or CHEQUE_BOOK.
  */
-export type ServiceRequestType = 'CARD' | 'CHEQUE_BOOK';
+/*
+ * THREE VALUES, MATCHING THE SERVER. This union, the Java enum and the CHECK
+ * constraint in V18/V25 are three copies of one list — the comment on
+ * ServiceRequestType.java says so, and V16 exists because two copies disagreed.
+ *
+ * A LOAN APPLICATION IS NOT COLLECTED. The other two are objects somebody picks up;
+ * this one is a decision the bank sends. Screens that talk about collecting must
+ * check the type rather than assume.
+ */
+export type ServiceRequestType = 'CARD' | 'CHEQUE_BOOK' | 'LOAN_APPLICATION';
 
 /**
  * FOUR STATES, matching the server, where the old `ServiceRequestStatus` in api.ts listed

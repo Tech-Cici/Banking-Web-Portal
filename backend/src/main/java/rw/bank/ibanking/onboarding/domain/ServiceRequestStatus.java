@@ -32,6 +32,21 @@ public enum ServiceRequestStatus {
     /** Handed over. The audit record that somebody actually received it. */
     COLLECTED,
 
+    /**
+     * Approved and paid out. The ending a loan application gets.
+     *
+     * <p>NOT COLLECTED, and the difference is the whole point. READY and COLLECTED describe
+     * an object sitting at a branch waiting for somebody to walk in -- a cheque book, a card.
+     * A loan is not fetched: the money is credited to the account the customer named when
+     * they applied, and the next thing they see is a bigger balance. Recording that as
+     * "collected" would put a counter and a journey into an audit trail that had neither.
+     *
+     * <p>THERE IS A LOAN BEHIND EVERY ROW IN THIS STATE. Granting creates the loan record and
+     * the disbursement in one transaction with this change, so a GRANTED application whose
+     * loan does not exist is not a state the system can reach.
+     */
+    GRANTED,
+
     /** Staff declined it, with a reason the customer can read and act on. */
     DECLINED
 }

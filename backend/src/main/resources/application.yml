@@ -121,6 +121,19 @@ server:
     include-message: never
     include-binding-errors: never
   servlet:
+    # ---- UPLOADED FILES.
+    #
+    # Boot's default is 1 MB per file, which a photograph of an A4 page exceeds without
+    # trying. The ceiling here is the same 8 MB the collateral_documents CHECK enforces and
+    # that OcrProperties clamps to: three copies of one number, in the three places that can
+    # refuse an upload, and they have to agree or a file gets past one and is rejected by the
+    # next with a message about a constraint.
+    #
+    # The request limit is larger than the file limit because a multipart request carries the
+    # field values and the boundaries as well as the file itself.
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 10MB
     session:
       cookie:
         http-only: true
@@ -176,6 +189,32 @@ management:
       show-components: never
 
 ibanking:
+  # ---- WHAT A STATEMENT CALLS THE INSTITUTION THAT ISSUED IT.
+  #
+  # THE DEMONSTRATION NAME IS THE DEFAULT, for the same reason frontend/src/config/brand.ts
+  # defaults to it. A statement is a document that leaves the portal -- downloaded, forwarded,
+  # printed, attached to a rental application. A PDF carrying a real bank's name, laid out
+  # like that bank's statement and listing plausible transactions, is a fabricated financial
+  # record the moment it leaves this machine, whatever it was built for.
+  #
+  # A real deployment by the bank that actually issues these sets STATEMENT_BRAND_NAME
+  # deliberately. That is a decision made once in an environment somebody controls, not one a
+  # build inherits by forgetting.
+  statements:
+    brand-name: ${STATEMENT_BRAND_NAME:Ciara's demo - Internet Banking}
+
+  # ---- HOW OFTEN THE STANDING-ORDER SWEEP RUNS.
+  #
+  # Hourly by default, because nothing in production is due at finer resolution than a day
+  # and sweeping more often is work with no payment at the end of it. The startup sweep is
+  # what actually matters on a host that sleeps; this timer covers the hours it is awake.
+  #
+  # DEVELOPMENT SETS IT TO SECONDS so the EVERY_2_MINUTES frequency can be watched. Standing
+  # orders are the only way money leaves an account here without a manager releasing it, and
+  # that is worth seeing happen rather than trusting. See application-dev.yml.
+  standing-orders:
+    sweep-interval-ms: ${STANDING_ORDER_SWEEP_MS:3600000}
+
   sign-in:
     # WHETHER A CUSTOMER MUST TYPE AN EMAILED CODE TO SIGN IN.
     #
@@ -193,6 +232,122 @@ ibanking:
     # in the way. Fine for a portal being built and shown; not fine for real customers.
     # Set LOGIN_CODE_REQUIRED=true to turn it back on. See frontend/docs/OPEN-ITEMS.md.
     code-required: ${LOGIN_CODE_REQUIRED:false}
+
+  # ---- LOAN PRODUCTS AND THEIR RATES.
+  #
+  # PROVISIONAL, AND LABELLED AS SUCH. These are working values in the same sense as the
+  # 10-16 digit account-number rule and the demonstration MAIL_FROM: enough to build and
+  # show the screens, and wrong until Zigama confirms them. docs/OPEN-ITEMS.md tracks it.
+  #
+  # THEY DRIVE ONLY THE SIMULATION, which is an indicative answer to "what would this
+  # cost" and is never stored. A loan the bank has actually granted carries ITS OWN rate,
+  # typed in by staff, because a customer's agreed rate can differ from the advertised one.
+  #
+  # The three codes match the three the screen offers. A product not listed here is
+  # refused rather than given a default: a default rate is a quote nobody gave.
+  loans:
+    # ---- THE MOST ONE CUSTOMER MAY OWE AT ONCE, across every loan, in francs.
+    #
+    # This is what decides whether somebody repaying a loan may take another: what they still
+    # owe, plus what they are asking for, has to stay under this. A loan that is fully paid
+    # has nothing outstanding, so it adds nothing and stops blocking on its own -- there is no
+    # separate rule about settled loans anywhere, which is the point of using a sum.
+    #
+    # PROVISIONAL, like every other figure here. A Rwandan bank was reported lending up to
+    # RWF 30,000,000 unsecured to one customer, so a total ceiling somewhat above that is the
+    # shape of the thing; the number itself belongs to Zigama's credit committee.
+    #
+    # Leave it unset and the gate is off: a bank that has named no ceiling has not decided on
+    # one, and refusing everybody because a number is missing would be software writing credit
+    # policy by omission.
+    max-total-exposure-rwf: ${MAX_TOTAL_EXPOSURE_RWF:20000000}
+
+    products:
+      #
+      # WHETHER A PRODUCT NEEDS SECURITY. Three rules: NEVER, ABOVE_THRESHOLD with a figure in
+      # francs, ALWAYS. A product configured inconsistently -- a threshold rule with no figure,
+      # or a figure under a rule that ignores it -- stops the application starting, because
+      # every other outcome is the bank lending unsecured on a missing number.
+      #
+      # THE FIGURES BELOW ARE PROVISIONAL, exactly like the rates above them, and the personal
+      # one is provisional TWICE OVER. It is a published US retail-credit band -- the $5,000
+      # line under which collateral is rarely asked for -- converted at 1 USD = 1,450 RWF,
+      # which is itself the provisional rate seeded by migration V32. A figure derived from a
+      # foreign market's convention through a rate nobody has confirmed is a placeholder with
+      # arithmetic in front of it, not a policy, and it is written down here so that nobody
+      # mistakes its precision for authority.
+      #
+      # IT IS THE CONSERVATIVE END OF THAT MODEL, deliberately. The US bands put $5,000 to
+      # $50,000 in a gray area resolved by the borrower's credit score, and this portal holds
+      # no score, no bureau data and no history beyond what it recorded itself. Where the
+      # model says "it depends on creditworthiness you cannot see", the safe reading is to
+      # ask for security rather than to assume the borrower is good for it. For context, a
+      # Rwandan bank was reported lending up to RWF 30,000,000 unsecured, so this sits well
+      # inside local practice.
+      #
+      # WHAT WOULD REPLACE IT PROPERLY is a figure from Zigama's credit committee, and most
+      # likely a different shape: a salary-backed lender tends to express an unsecured limit
+      # as a multiple of salary rather than a flat amount, which this portal cannot do today
+      # because it holds no salary figure.
+      #
+      # ONLY FRANCS CARRY A FIGURE. A loan in any other currency requires security whatever the
+      # amount: comparing a dollar amount against a franc threshold needs an exchange rate this
+      # portal does not have, and the safe direction to err is towards asking.
+      - code: PERSONAL
+        name: Personal loan
+        annual-rate-percent: 16.0
+        min-months: 6
+        max-months: 60
+        collateral: ABOVE_THRESHOLD
+        collateral-required-above-rwf: 7250000
+      - code: SALARY_ADVANCE
+        name: Salary advance
+        annual-rate-percent: 12.0
+        min-months: 6
+        max-months: 24
+        # Secured by the salary it is advanced against, so nothing is pledged.
+        collateral: NEVER
+      - code: BUSINESS
+        name: Business loan
+        annual-rate-percent: 18.0
+        min-months: 12
+        max-months: 60
+        collateral: ALWAYS
+
+  # ---------------------------------------------------------------- registration
+  #
+  # WHETHER AN APPLICANT MUST PROVE THEY CAN READ THE ADDRESS THEY GAVE.
+  #
+  # ON, by email, and the reason is the manager's message rather than the applicant's
+  # patience. The credentials a manager sends after approving go to the address on the
+  # application and nowhere else -- the CBS record carries a telephone number and no
+  # email address, so nothing downstream can catch a mistyped one. Proving the applicant
+  # can read that address is what makes the approval email arrive.
+  #
+  # Verification was briefly switched off here while the plan was to move it to SMS. It
+  # is back on because the email has a job to do that SMS would not replace. If SMS is
+  # funded later, the flag stays and the transport changes beneath it.
+  registration:
+    verify-contact: ${REGISTRATION_VERIFY_CONTACT:true}
+
+  # ------------------------------------------------------- core banking system
+  #
+  # The bank's own system of record, on SQL Server. This service READS it and never
+  # writes: the login below should hold SELECT and nothing else, and the pool is opened
+  # read-only so the driver refuses a write even if one were written by mistake.
+  #
+  # OFF BY DEFAULT so that a developer with no SQL Server running still gets an
+  # application that starts. Lookups then report the CBS as unavailable, which is true,
+  # rather than the service failing to boot over a system it only reads from.
+  #
+  # trustServerCertificate is set because the local container serves a self-signed
+  # certificate. That is a LOCAL accommodation: a real CBS connection gets a real
+  # certificate, and this value does not travel to one.
+  cbs:
+    enabled: ${CBS_ENABLED:false}
+    url: ${CBS_URL:jdbc:sqlserver://localhost:1433;databaseName=ZigamaCbs;encrypt=true;trustServerCertificate=true}
+    username: ${CBS_USERNAME:sa}
+    password: ${CBS_PASSWORD:}
 
   mail:
     # Master switch. Left false so that adding the dependency changed no behaviour:
@@ -244,6 +399,23 @@ ibanking:
       # A send that has not answered by now is better recorded as failed: the outbox keeps
       # the body, so the code is still readable from the staff message log.
       timeout: ${BREVO_TIMEOUT:PT10S}
+
+  # ---- READING UPLOADED DOCUMENTS.
+  #
+  # The binary is configuration because tesseract lands in /opt/homebrew/bin on a Mac and
+  # /usr/bin in a container, and a hard-coded path is a feature that works on one machine.
+  #
+  # LANGUAGES: naming one whose training data is not installed makes tesseract exit rather
+  # than fall back, so this stays at eng until `tesseract --list-langs` says otherwise.
+  #
+  # NOTHING HERE IS REQUIRED FOR THE PORTAL TO RUN. With no tesseract on the machine, uploads
+  # still succeed, the reading comes back FAILED, and the customer types the fields.
+  ocr:
+    binary: ${OCR_BINARY:tesseract}
+    languages: ${OCR_LANGUAGES:eng}
+    timeout: ${OCR_TIMEOUT:PT30S}
+    max-pages: ${OCR_MAX_PAGES:3}
+    max-bytes: 8388608
 
   cors:
     # Exact origins only. Populated per environment; see application-dev.yml.

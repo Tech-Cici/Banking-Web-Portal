@@ -5,43 +5,66 @@ import {
   Button,
   DataTable,
   EmptyState,
-  humaniseStatus,
   PageHeader,
   Skeleton,
-  StatusBadge,
-  toneForStatus,
   type Column,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { RETAIL_PATHS } from '@/routes/paths';
-import { statementService } from '@/services';
+import { ApiError, statementService } from '@/services';
 import type { Statement } from '@/types/movement';
 import { formatDate, formatDateTime } from '@/utils/datetime';
+import { saveFile } from '@/utils/download';
 import './accounts.css';
 
-function sizeLabel(bytes: number | undefined): string {
-  if (bytes === undefined) return '—';
+function sizeLabel(bytes: number): string {
   return bytes < 1024 * 1024
     ? `${String(Math.round(bytes / 1024))} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 /**
- * Statements that have been requested, and their state.
+ * Statements this customer has already taken, and a way to take each one again.
  *
- * A statement is produced by a batch, so "requested" and "ready" are different things
- * and the list says which. A download link that appears before the file exists is a
- * link that 404s, so it only appears on READY.
+ * <p>NO STATUS COLUMN. There was one, because statements were going to be produced by an
+ * overnight batch and "requested" and "ready" were different things. They are produced inside
+ * the request now, so every row here is a document that exists, and a status that always read
+ * READY would be a column inviting somebody to believe it meant something.
+ *
+ * <p>DOWNLOADING RE-RENDERS rather than fetching a stored file. The ledger is append-only, so
+ * the same period produces the same document; see V28 for why nothing is kept on disk.
  */
 export function StatementsPage(): ReactElement {
   const { state, reload } = useAsync('statements', (signal) => statementService.list(signal));
   const [note, setNote] = useState<string | null>(null);
 
+  /*
+   * THE ROW BEING FETCHED, not a bare boolean. A spinner on every button at once would say
+   * the whole table was working; holding the id puts it on the one the customer pressed.
+   */
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const download = async (row: Statement): Promise<void> => {
+    setDownloading(row.id);
+    setNote(null);
+    try {
+      saveFile(await statementService.download(row.id));
+    } catch (cause) {
+      setNote(
+        cause instanceof ApiError
+          ? cause.message
+          : 'We could not download that statement. Please try again.',
+      );
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const columns: readonly Column<Statement>[] = [
     {
       key: 'account',
       header: 'Account',
-      render: (row) => <span className="numeric">{row.accountMask}</span>,
+      render: (row) => row.accountLabel,
     },
     {
       key: 'period',
@@ -55,32 +78,28 @@ export function StatementsPage(): ReactElement {
       secondary: true,
       render: (row) => formatDateTime(row.requestedAt),
     },
-    { key: 'size', header: 'Size', numeric: true, secondary: true, render: (row) => sizeLabel(row.sizeBytes) },
     {
-      key: 'status',
-      header: 'Status',
-      render: (row) => (
-        <StatusBadge tone={toneForStatus(row.status)} label={humaniseStatus(row.status)} />
-      ),
+      key: 'size',
+      header: 'Size',
+      numeric: true,
+      secondary: true,
+      render: (row) => sizeLabel(row.sizeBytes),
     },
     {
       key: 'action',
       header: 'Download',
-      render: (row) =>
-        row.status === 'READY' ? (
-          <Button
-            variant="tertiary"
-            onClick={() => {
-              setNote(
-                `The download endpoint is not built yet, so ${row.accountMask} for ${formatDate(row.periodFrom)} could not be fetched.`,
-              );
-            }}
-          >
-            Download
-          </Button>
-        ) : (
-          <span style={{ color: 'var(--color-text-muted)' }}>Not ready</span>
-        ),
+      render: (row) => (
+        <Button
+          variant="tertiary"
+          loading={downloading === row.id}
+          disabled={downloading !== null}
+          onClick={() => {
+            void download(row);
+          }}
+        >
+          Download
+        </Button>
+      ),
     },
   ];
 
@@ -88,14 +107,12 @@ export function StatementsPage(): ReactElement {
     <article>
       <PageHeader
         title="Statements"
-        lead="Statements are produced overnight. You will be notified when one is ready."
-        action={<Link to={RETAIL_PATHS.accounts}>Request one from an account</Link>}
+        lead="Every statement you have taken. Downloading one produces it again from your transaction history."
+        action={<Link to={RETAIL_PATHS.accounts}>Take a new one from an account</Link>}
       />
 
-      {/* The endpoint must be authenticated and must not hand out a public URL; see
-          docs/OPEN-ITEMS.md. None of that belongs on the customer's screen. */}
       {note !== null && (
-        <Alert tone="info" title="Downloads are not available yet">
+        <Alert tone="error" title="We could not download that statement">
           <p>{note}</p>
         </Alert>
       )}
@@ -115,18 +132,17 @@ export function StatementsPage(): ReactElement {
 
       {state.status === 'ready' &&
         (state.data.length === 0 ? (
-          <EmptyState message="You have not requested any statements yet.">
+          <EmptyState message="You have not taken any statements yet.">
             <p className="dash__note">
-              <Link to={RETAIL_PATHS.accounts}>Choose an account to request one</Link>
+              <Link to={RETAIL_PATHS.accounts}>Choose an account to take one</Link>
             </p>
           </EmptyState>
         ) : (
           <DataTable
-            caption="Statements you have requested"
+            caption="Statements you have taken"
             columns={columns}
             rows={state.data}
             rowKey={(row) => row.id}
-            rowTone={(row) => (row.status === 'FAILED' ? 'error' : 'default')}
           />
         ))}
     </article>

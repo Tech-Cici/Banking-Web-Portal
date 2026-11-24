@@ -32,6 +32,15 @@ interface ImportMetaEnv {
    * the page on the build mode would produce a demo nobody could sign into.
    */
   readonly VITE_ENABLE_DEV_TOOLS?: string;
+  /**
+   * Wordmark and full product name, DEV BUILDS ONLY.
+   *
+   * `.env.development` sets these to the bank's name so local work looks like the
+   * real portal. A production build ignores them -- see src/config/brand.ts for why
+   * that is deliberate rather than an oversight.
+   */
+  readonly VITE_BRAND_SHORT?: string;
+  readonly VITE_BRAND_FULL?: string;
 }
 
 interface ImportMeta {

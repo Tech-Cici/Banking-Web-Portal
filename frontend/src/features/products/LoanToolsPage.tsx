@@ -1,10 +1,13 @@
-import { useState, type ReactElement } from 'react';
+import { useCallback, useState, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AccountSelector, Alert, Button, ErrorNotice, MoneyInput, PageHeader, ReviewPanel, Select, Skeleton, TextArea } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { RETAIL_PATHS } from '@/routes/paths';
 import { accountService, loanService } from '@/services';
 import type { LoanSimulation } from '@/services';
+import type { CollateralEntry } from '@/types/banking';
+import { CollateralSection } from './CollateralSection';
+import { LOAN_PRODUCT_OPTIONS } from '@/types/banking';
 import { formatMoneyDto } from '@/utils/money';
 import './products.css';
 
@@ -84,11 +87,7 @@ export function LoanSimulationPage(): ReactElement {
         <Select
           label="What kind of loan?"
           value={product}
-          options={[
-            { value: 'PERSONAL', label: 'Personal loan' },
-            { value: 'SALARY_ADVANCE', label: 'Salary advance' },
-            { value: 'BUSINESS', label: 'Business loan' },
-          ]}
+          options={LOAN_PRODUCT_OPTIONS}
           onChange={(event) => {
             setProduct(event.target.value);
           }}
@@ -145,11 +144,37 @@ export function LoanRequestPage(): ReactElement {
   const [product, setProduct] = useState('PERSONAL');
   const [disburseTo, setDisburseTo] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [collateral, setCollateral] = useState<CollateralEntry | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   const [reference, setReference] = useState<string | null>(null);
 
+  /*
+   * WHAT THE BANK PUBLISHES, including which products need security. Fetched rather than
+   * listed here so the form and the rule cannot drift apart, and so the sentence shown to
+   * the customer is the one the server composed from the rule it will actually apply.
+   */
+  const products = useAsync('loan-request:products', (signal) => loanService.products(signal));
+
+  const published = products.state.status === 'ready' ? products.state.data : [];
+  const chosenProduct = published.find((item) => item.code === product);
+
+  /*
+   * STABLE, BECAUSE THE SECTION REPORTS ITS PLEDGE FROM AN EFFECT. A fresh function on every
+   * render would be a new dependency every render, and the effect would run forever.
+   */
+  const onCollateralChange = useCallback((entry: CollateralEntry | null) => {
+    setCollateral(entry);
+  }, []);
+
   const list = accounts.state.status === 'ready' ? accounts.state.data : [];
+
+  /*
+   * WHETHER SECURITY IS NEEDED IS NOT DECIDED HERE. The button does not compare the amount
+   * to a threshold -- that is the server's rule, and a copy of it in the browser is a second
+   * rule to keep in step. If something is required and missing, the application comes back
+   * refused with a sentence saying so, which is the one place the rule lives.
+   */
   const ready = amount !== '' && Number(amount) > 0 && disburseTo !== '' && purpose.trim() !== '';
 
   const submit = (): void => {
@@ -163,6 +188,7 @@ export function LoanRequestPage(): ReactElement {
         product,
         disburseToAccountId: disburseTo,
         purpose: purpose.trim(),
+        ...(collateral === null ? {} : { collateral: [collateral] }),
       })
       .then((created) => {
         setReference(created.reference);
@@ -238,11 +264,7 @@ export function LoanRequestPage(): ReactElement {
         <Select
           label="What kind of loan?"
           value={product}
-          options={[
-            { value: 'PERSONAL', label: 'Personal loan' },
-            { value: 'SALARY_ADVANCE', label: 'Salary advance' },
-            { value: 'BUSINESS', label: 'Business loan' },
-          ]}
+          options={LOAN_PRODUCT_OPTIONS}
           onChange={(event) => {
             setProduct(event.target.value);
           }}
@@ -263,6 +285,11 @@ export function LoanRequestPage(): ReactElement {
           onChange={(event) => {
             setPurpose(event.target.value);
           }}
+        />
+
+        <CollateralSection
+          note={chosenProduct?.collateralNote}
+          onChange={onCollateralChange}
         />
 
         <div className="money__actions">

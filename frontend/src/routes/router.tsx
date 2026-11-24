@@ -138,42 +138,49 @@ const BILL_KINDS = [
     path: RETAIL_PATHS.paymentWallet,
     category: 'WALLET',
     title: 'Send to a mobile wallet',
+    short: 'Mobile wallet',
     lead: "Money arrives on the recipient's phone within minutes.",
   },
   {
     path: RETAIL_PATHS.paymentAirtime,
     category: 'AIRTIME',
     title: 'Buy airtime',
+    short: 'Airtime',
     lead: 'Top up any number, instantly.',
   },
   {
     path: RETAIL_PATHS.paymentElectricity,
     category: 'ELECTRICITY',
     title: 'Pay for electricity',
+    short: 'Electricity',
     lead: 'Your token is sent by SMS to the number on your profile.',
   },
   {
     path: RETAIL_PATHS.paymentWater,
     category: 'WATER',
     title: 'Pay your water bill',
+    short: 'Water bill',
     lead: 'WASAC, by customer number.',
   },
   {
     path: RETAIL_PATHS.paymentTv,
     category: 'TV',
     title: 'Pay a TV subscription',
+    short: 'TV subscription',
     lead: 'Canal+ and StarTimes. Reconnection can take a few minutes.',
   },
   {
     path: RETAIL_PATHS.paymentTax,
     category: 'TAX',
     title: 'Pay tax',
+    short: 'Tax',
     lead: 'RRA declarations. The amount comes from the declaration, not from you.',
   },
   {
     path: RETAIL_PATHS.paymentAfos,
     category: 'AFOS',
     title: 'Pay AFOS',
+    short: 'AFOS',
     lead: 'By member number.',
   },
 ] as const;
@@ -205,8 +212,18 @@ const TRANSFER_CHOICES = [
   },
 ] as const;
 
+/*
+ * THE CARD LABEL IS WRITTEN OUT, not cut from the page title by a regular expression.
+ *
+ * The expression stripped a leading verb -- `/^(Pay|Send to|Buy)\s+(a\s+|your\s+)?/` --
+ * which works on "Buy airtime" and fails on "Pay for electricity", because "for" is not
+ * in its list of articles. The grid therefore read "for electricity" beside "mobile
+ * wallet" and "tax", all lower case, because what is left after a verb is removed is a
+ * sentence fragment rather than a name. Seven labels are cheaper to write than a rule
+ * that is right about five of them.
+ */
 const PAYMENT_CHOICES = BILL_KINDS.map((bill) => ({
-  label: bill.title.replace(/^(Pay|Send to|Buy)\s+(a\s+|your\s+)?/, ''),
+  label: bill.short,
   note: bill.lead,
   to: bill.path,
   anyOf: ['PAYMENT_CREATE', 'CORPORATE_PAYMENT_CREATE'] as const,
@@ -343,7 +360,17 @@ const productRoutes: RouteObject[] = [
   },
   {
     path: RETAIL_PATHS.loanStatements,
-    element: placeholder('Loan statement', 'Phase 19', 'section 14.5'),
+    lazy: async () => ({ Component: (await productsChunk()).LoanStatementPage }),
+  },
+  {
+    /*
+     * A LOAN ROUTE SERVED FROM THE MONEY CHUNK, deliberately. Paying one off is a
+     * money-moving flow and is built in the same three-step frame as a transfer, which
+     * lives there; splitting the frame to keep the file beside the other loan screens
+     * would mean two copies of the step that must never be skipped.
+     */
+    path: RETAIL_PATHS.loanRepay,
+    lazy: async () => ({ Component: (await moneyChunk()).LoanRepayPage }),
   },
 
   {

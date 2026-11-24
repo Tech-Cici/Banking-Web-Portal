@@ -21,3 +21,104 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------- collateral */
+
+/*
+ * A BORDERED BLOCK, because this is a different question from the ones above it. The fields
+ * above describe the loan; these describe a thing the customer owns, read off a document they
+ * photographed. Running them together as one list of inputs makes the document feel like
+ * another form field rather than evidence.
+ */
+.products__collateral {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle, transparent);
+}
+
+.products__collateral-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md, 1rem);
+}
+
+.products__reading {
+  margin-top: var(--space-3);
+  font-size: 0.875rem;
+}
+
+/*
+ * THE READING IS SHOWN AS IT CAME BACK: monospaced, wrapped, scrollable. It is machine output
+ * and looks like it, which is the point -- a customer comparing it with the page in their hand
+ * should be able to see where the reader went wrong.
+ */
+.products__reading-text {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  max-height: 14rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+  background: var(--color-surface-sunken, rgba(0, 0, 0, 0.04));
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------- what else the page says */
+
+/*
+ * A DEFINITION LIST, NOT A FORM. These values are read off the document and never submitted,
+ * so rendering them as inputs would invite edits that go nowhere. The styling is deliberately
+ * quieter than the fields above it: this is context for the bank, not a question for the
+ * customer.
+ */
+.products__alsoread {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-sunken, rgba(0, 0, 0, 0.035));
+}
+
+.products__alsoread-title {
+  margin: 0 0 var(--space-2);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #5f6f66);
+}
+
+.products__alsoread-list {
+  margin: 0;
+}
+
+.products__alsoread-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0.3rem 0;
+  font-size: 0.9375rem;
+}
+
+.products__alsoread-row dt {
+  color: var(--color-text-muted, #5f6f66);
+}
+
+.products__alsoread-row dd {
+  margin: 0;
+  text-align: right;
+  word-break: break-word;
+}
+
+/*
+ * TWO ACTIONS IN THE HEADER, which the slot was built for one of. Applying comes first
+ * because it is what somebody arrives on this page to do; working out a repayment is the
+ * thing they do while deciding. On a narrow screen they stack rather than squeeze.
+ */
+.products__head-actions {
+  display: inline-flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

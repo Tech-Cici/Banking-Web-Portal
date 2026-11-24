@@ -5,16 +5,11 @@ import { useAsync } from '@/hooks/useAsync';
 import { useSession } from '@/hooks/useSession';
 import { RETAIL_PATHS, routeTo } from '@/routes/paths';
 import { standingOrderService } from '@/services';
+import { STANDING_ORDER_FREQUENCY_LABELS } from '@/types/movement';
 import type { StandingOrder } from '@/types/movement';
-import { formatDate } from '@/utils/datetime';
+import { formatDateTime } from '@/utils/datetime';
 import { formatMoneyDto } from '@/utils/money';
 import './money.css';
-
-const FREQUENCY: Readonly<Record<string, string>> = {
-  WEEKLY: 'Every week',
-  MONTHLY: 'Every month',
-  QUARTERLY: 'Every three months',
-};
 
 /**
  * Payments the bank makes on a schedule, and the controls to stop them.
@@ -77,12 +72,12 @@ export function StandingOrdersPage(): ReactElement {
       key: 'when',
       header: 'How often',
       secondary: true,
-      render: (row) => FREQUENCY[row.frequency] ?? row.frequency,
+      render: (row) => STANDING_ORDER_FREQUENCY_LABELS[row.frequency],
     },
     {
       key: 'next',
       header: 'Next payment',
-      render: (row) => (row.status === 'ACTIVE' ? formatDate(row.nextRunOn) : '—'),
+      render: (row) => (row.status === 'ACTIVE' ? formatDateTime(row.nextRunAt) : '—'),
     },
     {
       key: 'status',

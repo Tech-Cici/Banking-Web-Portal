@@ -500,3 +500,192 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+/* ------------------------------------------------- what is securing a loan, to staff */
+
+/*
+ * THE PANEL A MANAGER READS BEFORE APPROVING.
+ *
+ * It sits above the grant form rather than beside it, with a rule under the heading,
+ * because its job is to be passed through on the way to the buttons. A column alongside
+ * would be a column that can be ignored without scrolling past it.
+ */
+.staff__pledges {
+  padding-top: var(--space-6);
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.staff__pledge-heading {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.staff__pledge-none {
+  padding: var(--space-4);
+  margin-top: var(--space-6);
+  background-color: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+.staff__pledge-none p {
+  margin: 0;
+}
+
+.staff__pledge {
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.staff__pledge-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.staff__pledge-kind {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.staff__pledge-desc {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.staff__pledge-file {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin: var(--space-4) 0 0;
+}
+
+.staff__pledge-filename {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.staff__pledge-failure {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+.staff__pledge-title {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.staff__pledge-fields {
+  margin-top: var(--space-6);
+}
+
+.staff__pledge-fields-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.staff__pledge-table {
+  width: 100%;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  border-collapse: collapse;
+}
+
+.staff__pledge-table th,
+.staff__pledge-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.staff__pledge-table thead th {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.staff__pledge-table tbody th {
+  font-weight: 600;
+}
+
+/*
+ * A DISAGREEMENT IS TINTED, NOT RED.
+ *
+ * The customer is shown what was read and corrects it before submitting, so a row that
+ * differs is most often a reader that misread a character on a photographed page. It is
+ * marked because it is the one row a reviewer should put their own eyes on; marking it in
+ * the colour this portal uses for refusals would tell them the application was suspect.
+ */
+.staff__pledge-row--differs {
+  background-color: var(--color-warning-subtle);
+}
+
+.staff__pledge-raw {
+  margin-top: var(--space-4);
+}
+
+/*
+ * EVERYTHING THE READER PRODUCED, as characters and nothing else.
+ *
+ * `pre` with wrapping on: the text is a transcription of a scanned page, so its line
+ * breaks carry the page's layout and are worth keeping, but a long line must not push the
+ * review panel sideways. Scrolled vertically because a full page of text would otherwise
+ * bury the buttons under it.
+ */
+.staff__pledge-text {
+  max-height: 18rem;
+  padding: var(--space-3);
+  margin: var(--space-3) 0 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background-color: var(--color-surface-sunken);
+  border-radius: var(--radius-md);
+}
+
+@media (width <= 40rem) {
+  /*
+   * Four columns do not fit a narrow screen, and a table that scrolls sideways hides the
+   * verdict column -- which is the column the row exists for. Each field becomes its own
+   * block instead, with the label above the two values.
+   */
+  .staff__pledge-table,
+  .staff__pledge-table tbody,
+  .staff__pledge-table tr,
+  .staff__pledge-table th,
+  .staff__pledge-table td {
+    display: block;
+  }
+
+  .staff__pledge-table thead {
+    display: none;
+  }
+
+  .staff__pledge-table tr {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .staff__pledge-table th,
+  .staff__pledge-table td {
+    padding: var(--space-1) var(--space-3);
+    border-bottom: 0;
+  }
+}

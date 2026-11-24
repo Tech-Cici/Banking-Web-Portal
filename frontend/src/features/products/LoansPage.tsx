@@ -35,7 +35,17 @@ export function LoansPage(): ReactElement {
       <PageHeader
         title="Loans"
         lead="Balances and instalments as the bank has them today."
-        action={<Link to={RETAIL_PATHS.loanSimulation}>Work out a repayment</Link>}
+        /*
+          APPLYING IS REACHABLE WHETHER OR NOT THEY ALREADY HAVE A LOAN. It used to appear
+          only in the empty state, so a customer who had ever borrowed — including one whose
+          loan was fully paid off — had no route to a new application except typing the URL.
+        */
+        action={
+          <span className="products__head-actions">
+            <Link to={RETAIL_PATHS.loanRequest}>Apply for a loan</Link>
+            <Link to={RETAIL_PATHS.loanSimulation}>Work out a repayment</Link>
+          </span>
+        }
       />
 
       {state.status === 'loading' && <Skeleton rows={5} label="Loading loans" />}
@@ -104,6 +114,11 @@ export function LoansPage(): ReactElement {
                     <Link to={routeTo.loanDetail(loan.id)} className="dash__action">
                       Details
                     </Link>
+                    {loan.status !== 'SETTLED' && (
+                      <Link to={routeTo.loanRepay(loan.id)} className="dash__action">
+                        Make a payment
+                      </Link>
+                    )}
                     <Link to={routeTo.loanStatements(loan.id)} className="dash__action">
                       Loan statement
                     </Link>
@@ -160,13 +175,22 @@ export function LoanDetailPage(): ReactElement {
         ]}
       />
 
-      <Alert tone="info" title="Settling early">
-        The amount to clear this loan today is not the outstanding balance — it depends on
-        interest accrued to the day and any early-settlement charge. Ask the bank for a
-        settlement quote.
+      {/*
+        THE SETTLEMENT FIGURE IS NOW THE BANK'S TO GIVE, so this no longer sends the customer
+        to a counter for it. It is still not the outstanding balance — it is that balance plus
+        the interest owed on it — and the payment screen states both before anything is paid.
+      */}
+      <Alert tone="info" title="Clearing it early">
+        The amount that clears this loan today is more than the outstanding balance: interest
+        is owed on what you have borrowed. The payment screen shows the exact figure.
       </Alert>
 
       <div className="dash__actions">
+        {loan.status !== 'SETTLED' && (
+          <Link to={routeTo.loanRepay(loan.id)} className="dash__action">
+            Make a payment
+          </Link>
+        )}
         <Link to={routeTo.loanStatements(loan.id)} className="dash__action">
           Loan statement
         </Link>

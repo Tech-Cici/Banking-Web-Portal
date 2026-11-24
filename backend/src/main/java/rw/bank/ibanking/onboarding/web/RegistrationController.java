@@ -68,7 +68,8 @@ class RegistrationController {
                 challenge.challengeId(),
                 challenge.otpLength(),
                 challenge.resendAfterSeconds(),
-                challenge.deliveryHint());
+                challenge.deliveryHint(),
+                challenge.verificationToken());
     }
 
     /**
@@ -116,7 +117,8 @@ class RegistrationController {
                 challenge.challengeId(),
                 challenge.otpLength(),
                 challenge.resendAfterSeconds(),
-                challenge.deliveryHint());
+                challenge.deliveryHint(),
+                challenge.verificationToken());
     }
 
     @PostMapping("/personal/verify")
@@ -132,7 +134,8 @@ class RegistrationController {
                 challenge.challengeId(),
                 challenge.otpLength(),
                 challenge.resendAfterSeconds(),
-                challenge.deliveryHint());
+                challenge.deliveryHint(),
+                challenge.verificationToken());
     }
 
     /**

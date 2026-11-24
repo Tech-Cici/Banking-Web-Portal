@@ -7,7 +7,7 @@
  * approvalService (blueprint section 39).
  */
 export { apiClient, apiRequest, onUnauthenticated } from './apiClient';
-export type { ApiRequest, HttpMethod, QueryValue } from './apiClient';
+export type { ApiRequest, DownloadedFile, HttpMethod, QueryValue } from './apiClient';
 export { ApiError, isApiErrorEnvelope, kindFromStatus } from './apiError';
 export type { ApiErrorKind } from './apiError';
 export { CORRELATION_HEADER, newCorrelationId } from './correlation';
@@ -25,6 +25,7 @@ export {
   beneficiaryService,
   bulkService,
   cardService,
+  collateralService,
   loanService,
   notificationService,
   serviceRequestService,
@@ -32,6 +33,7 @@ export {
 export type {
   BalanceResponse,
   LoanApplication,
+  LoanProduct,
   LoanSimulation,
   NewBeneficiary,
   TransactionQuery,

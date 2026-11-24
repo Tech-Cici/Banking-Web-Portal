@@ -463,11 +463,15 @@ class AccountsController {
                     account.isActive());
         }
 
-        /** A readable name, derived rather than stored — there is nothing to store yet. */
+        /**
+         * A readable name.
+         *
+         * <p>MOVED ONTO {@link rw.bank.ibanking.onboarding.domain.AccountType}, because the
+         * standing-order screens name accounts too and a second copy of this rule would
+         * drift away from this one.
+         */
         private static String nicknameFor(CustomerAccountEntity account) {
-            String words =
-                    account.accountType().name().toLowerCase(java.util.Locale.ROOT).replace('_', ' ');
-            return Character.toUpperCase(words.charAt(0)) + words.substring(1);
+            return account.accountType().label();
         }
     }
 }

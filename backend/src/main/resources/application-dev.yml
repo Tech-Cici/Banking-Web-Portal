@@ -46,6 +46,16 @@ server:
         secure: false
 
 ibanking:
+  # EVERY TEN SECONDS, so an EVERY_2_MINUTES order pays within ten seconds of falling due
+  # instead of up to an hour later. The sweep is a single indexed query against a table with
+  # a handful of rows; at this size the cost of asking is not worth measuring.
+  #
+  # NOT FASTER THAN THIS. Two sweeps overlapping would both see the same order as due, and
+  # the only thing between that and a double payment is the ledger's idempotency key. Ten
+  # seconds leaves that guard with nothing to do, which is where a guard belongs.
+  standing-orders:
+    sweep-interval-ms: 10000
+
   cors:
     allowed-origins:
       - http://localhost:5173

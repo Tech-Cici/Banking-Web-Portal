@@ -1,4 +1,5 @@
 export { FxPage } from './FxPage';
+export { LoanRepayPage } from './LoanRepayPage';
 export { HubPage } from './HubPage';
 export type { HubChoice } from './HubPage';
 export { PaymentPage } from './PaymentPage';

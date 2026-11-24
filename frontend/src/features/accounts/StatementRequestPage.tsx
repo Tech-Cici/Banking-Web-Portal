@@ -1,10 +1,12 @@
 import { useState, type ReactElement } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Alert, Button, PageHeader, Select, Skeleton, TextField } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { RETAIL_PATHS, routeTo } from '@/routes/paths';
 import { accountService, ApiError, statementService } from '@/services';
+import { saveFile } from '@/utils/download';
 import type { Account } from '@/types/banking';
+import type { StatementFormat } from '@/types/movement';
 import './accounts.css';
 
 /**
@@ -98,9 +100,14 @@ const PRESETS: readonly Preset[] = [
 /**
  * Requests a statement for one account over a date range.
  *
+ * <p>THE FILE ARRIVES ON THIS SCREEN. The server renders it inside the request and sends it
+ * back, so there is nothing to wait for and nothing to come back to. This page used to say
+ * statements were produced overnight and send the customer to a list to wait; that was true
+ * of a design that no longer exists.
+ *
  * <p>Not a money-moving flow, so no review step and no idempotency key: asking twice
- * produces two statements, which is harmless and obvious. The dates are bounded in the
- * markup as well as validated, because a picker that allows next year invites a request
+ * produces the same document twice, which is harmless and obvious. The dates are bounded in
+ * the markup as well as validated, because a picker that allows next year invites a request
  * that can never be fulfilled.
  *
  * <p>IT NAMES THE ACCOUNT, and that is not decoration. This screen is reached from one
@@ -112,7 +119,6 @@ const PRESETS: readonly Preset[] = [
  */
 export function StatementRequestPage(): ReactElement {
   const { accountId = '' } = useParams();
-  const navigate = useNavigate();
 
   const { state } = useAsync(`account:${accountId}`, (signal) =>
     accountService.byId(accountId, signal),
@@ -126,8 +132,19 @@ export function StatementRequestPage(): ReactElement {
   const [today] = useState(() => localToday());
   const [from, setFrom] = useState(() => daysBefore(29));
   const [to, setTo] = useState(() => localToday());
-  const [format, setFormat] = useState<'PDF' | 'CSV'>('PDF');
+  const [format, setFormat] = useState<StatementFormat>('PDF');
+
+  /*
+   * WHICH ACCOUNTS. This screen is reached from one account, so that is the default and the
+   * breadcrumb above still names it. "All my accounts" is here because every account a
+   * customer holds shares one customer number -- so "my transactions" is usually a question
+   * about all of them, and making somebody take four statements to answer it is the kind of
+   * thing that gets done once and then not again.
+   */
+  const [everyAccount, setEveryAccount] = useState(false);
+
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ message: string; reference?: string } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -145,9 +162,23 @@ export function StatementRequestPage(): ReactElement {
     setFailure(null);
     setFieldErrors({});
 
+    setDone(null);
+
     try {
-      await statementService.request({ accountId, from, to, format });
-      void navigate(RETAIL_PATHS.statements, { replace: true });
+      /*
+       * THE ACCOUNT IS OMITTED, not sent as null, for an all-accounts statement. The server
+       * reads an absent account as "every account this customer holds"; sending a null would
+       * be sending a value, and a value is something a validator can disagree about.
+       */
+      const file = await statementService.produce({
+        ...(everyAccount ? {} : { accountId }),
+        from,
+        to,
+        format,
+      });
+
+      saveFile(file);
+      setDone(file.filename);
     } catch (cause) {
       if (cause instanceof ApiError) {
         setFieldErrors(Object.fromEntries(cause.fieldErrors.map((v) => [v.field, v.message])));
@@ -210,10 +241,17 @@ export function StatementRequestPage(): ReactElement {
         )}
       </div>
 
+      {done !== null && (
+        <Alert tone="success" title="Your statement has downloaded">
+          Saved as {done}. It is also in{' '}
+          <Link to={RETAIL_PATHS.statements}>Statements</Link> if you need it again.
+        </Alert>
+      )}
+
       {failure !== null && (
         <Alert
           tone="error"
-          title="We could not request that statement"
+          title="We could not produce that statement"
           reference={failure.reference}
         >
           {failure.message}
@@ -227,6 +265,49 @@ export function StatementRequestPage(): ReactElement {
           if (rangeError === undefined) void submit();
         }}
       >
+        <fieldset className="stmt__fieldset">
+          <legend className="stmt__legend">Which accounts</legend>
+
+          {/*
+            The same two-button pattern the period presets use, so the control reads as a
+            choice between two states rather than as something that submits. aria-pressed is
+            what tells a screen reader which one is chosen.
+          */}
+          <div className="stmt__presets">
+            <button
+              type="button"
+              className="stmt__preset"
+              aria-pressed={!everyAccount}
+              disabled={busy}
+              onClick={() => {
+                setEveryAccount(false);
+                setDone(null);
+              }}
+            >
+              This account
+            </button>
+            <button
+              type="button"
+              className="stmt__preset"
+              aria-pressed={everyAccount}
+              disabled={busy}
+              onClick={() => {
+                setEveryAccount(true);
+                setDone(null);
+              }}
+            >
+              All my accounts
+            </button>
+          </div>
+
+          {everyAccount && (
+            <p className="stmt__summary">
+              Every account you hold, each with its own running balance. Accounts in different
+              currencies are listed separately &mdash; they are not added together.
+            </p>
+          )}
+        </fieldset>
+
         <fieldset className="stmt__fieldset">
           <legend className="stmt__legend">Period</legend>
 
@@ -311,7 +392,7 @@ export function StatementRequestPage(): ReactElement {
 
         <div className="stmt__actions">
           <Button type="submit" loading={busy} disabled={rangeError !== undefined}>
-            Request statement
+            Download statement
           </Button>
           <Link to={routeTo.accountDetail(accountId)} className="stmt__cancel">
             Cancel
@@ -319,9 +400,9 @@ export function StatementRequestPage(): ReactElement {
         </div>
 
         <p className="stmt__note">
-          Statements are produced overnight. This one will appear in{' '}
-          <Link to={RETAIL_PATHS.statements}>Statements</Link> when it is ready &mdash; there is
-          nothing to wait for on this screen.
+          The file is produced now and downloads straight to this device. Every statement you
+          take is kept in <Link to={RETAIL_PATHS.statements}>Statements</Link> so you can take
+          the same one again without re-entering the dates.
         </p>
       </form>
     </article>

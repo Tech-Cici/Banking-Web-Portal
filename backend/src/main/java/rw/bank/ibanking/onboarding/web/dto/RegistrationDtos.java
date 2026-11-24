@@ -39,10 +39,27 @@ public final class RegistrationDtos {
              * THIS RANGE IS A GUESS AND THE BANK MUST CONFIRM IT. Too narrow turns real
              * clients away at the door. See frontend/docs/OPEN-ITEMS.md.
              */
+            /*
+             * LETTERS AND DIGITS, because Zigama's account numbers have both.
+             *
+             * This was \d{10,16} -- a guess made before anyone had seen a real account
+             * number, and recorded as a guess at the time. The core system settles it:
+             * all two hundred records run AC100000001 to AC100000200, two letters and
+             * nine digits, so the digits-only rule rejected every genuine client at the
+             * first field of registration.
+             *
+             * Still wider than the data on purpose. Pinning it to AC and nine digits
+             * would match today's records and lock the bank out of its own portal the
+             * day it opens a new product series. The authority on whether an account
+             * exists is the core system, which is asked later and answers properly; this
+             * pattern only has to stop an empty box and a pasted sentence.
+             */
             @NotBlank(message = "Enter your account number.")
                     @Pattern(
-                            regexp = "\\d{10,16}",
-                            message = "An account number is between 10 and 16 digits.")
+                            regexp = "[A-Za-z0-9]{8,20}",
+                            message =
+                                    "An account number is 8 to 20 letters and numbers, like"
+                                            + " AC100000001.")
                     String accountNumber,
             @NotBlank(message = "Enter your national ID number.")
                     @Pattern(regexp = "\\d{16}", message = "A national ID number has 16 digits.")
@@ -182,7 +199,11 @@ public final class RegistrationDtos {
 
     /** Matches OtpChallenge. */
     public record ChallengeResponse(
-            String challengeId, int otpLength, long resendAfterSeconds, String deliveryHint) {}
+            String challengeId,
+            int otpLength,
+            long resendAfterSeconds,
+            String deliveryHint,
+            String verificationToken) {}
 
     /** Matches VerifiedChallenge. */
     public record VerifiedResponse(String verificationToken, long expiresInSeconds) {}

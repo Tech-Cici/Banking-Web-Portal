@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/app/App';
+import { BRAND } from '@/config/brand';
 import { appConfig } from '@/config/env';
 import '@/styles/global.css';
 
@@ -41,6 +42,11 @@ async function startMockApi(): Promise<void> {
 }
 
 function mount(): void {
+  // index.html carries the demonstration name as static text, so the tab is right
+  // before this runs and right in a production build where BRAND resolves to the
+  // same thing. In a dev build this is what puts the bank's name back.
+  document.title = BRAND.FULL;
+
   const container = document.getElementById('root');
 
   if (container === null) {

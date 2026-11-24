@@ -5,7 +5,13 @@ import type {
   Beneficiary,
   BulkBatch,
   Card,
+  CollateralDocument,
+  CollateralEntry,
+  CollateralKindInfo,
   Loan,
+  LoanRepayment,
+  LoanRepaymentPreview,
+  LoanSettlement,
   Notification,
   ServiceRequest,
   Transaction,
@@ -155,6 +161,25 @@ export interface LoanApplication {
   readonly product: string;
   readonly disburseToAccountId: string;
   readonly purpose: string;
+  /** Omitted when nothing is pledged. The server decides whether that was allowed. */
+  readonly collateral?: readonly CollateralEntry[];
+}
+
+/** One published loan product, including whether it has to be secured. */
+export interface LoanProduct {
+  readonly code: string;
+  readonly name: string;
+  readonly interestRatePercent: string;
+  readonly minMonths: number;
+  readonly maxMonths: number;
+  readonly collateralRule: 'NEVER' | 'ABOVE_THRESHOLD' | 'ALWAYS';
+  /**
+   * The rule as a sentence, written by the server.
+   *
+   * The screen shows this rather than comparing the amount to a threshold itself. Deciding
+   * in the browser what a customer is entitled to is the one thing this client does not do.
+   */
+  readonly collateralNote: string;
 }
 
 export const loanService = {
@@ -173,11 +198,90 @@ export const loanService = {
   ): Promise<LoanSimulation> =>
     apiClient.post<LoanSimulation>('/loans/simulate', { body: payload, ...withSignal(signal) }),
 
+  /** What the bank publishes, and which products need security. */
+  products: (signal?: AbortSignal): Promise<readonly LoanProduct[]> =>
+    apiClient.get<readonly LoanProduct[]>('/loans/products', withSignal(signal)),
+
   apply: (payload: LoanApplication, signal?: AbortSignal): Promise<ServiceRequest> =>
     apiClient.post<ServiceRequest>('/loans/applications', {
       body: payload,
       ...withSignal(signal),
     }),
+
+  /** What is owed, the instalment, and what would clear the loan today. All the bank's. */
+  settlement: (loanId: string, signal?: AbortSignal): Promise<LoanSettlement> =>
+    apiClient.get<LoanSettlement>(
+      `/loans/${encodeURIComponent(loanId)}/settlement`,
+      withSignal(signal),
+    ),
+
+  /** Payments made against one loan, oldest first. */
+  repayments: (loanId: string, signal?: AbortSignal): Promise<readonly LoanRepayment[]> =>
+    apiClient.get<readonly LoanRepayment[]>(
+      `/loans/${encodeURIComponent(loanId)}/repayments`,
+      withSignal(signal),
+    ),
+
+  /**
+   * How a payment would divide between interest and capital, without making it.
+   *
+   * A POST that changes nothing, because the amount travels in the body. An amount a
+   * customer is about to pay does not belong in a URL, where every proxy and access log
+   * between here and the bank keeps a copy of it.
+   */
+  previewRepayment: (
+    loanId: string,
+    amount: MoneyDto,
+    signal?: AbortSignal,
+  ): Promise<LoanRepaymentPreview> =>
+    apiClient.post<LoanRepaymentPreview>(
+      `/loans/${encodeURIComponent(loanId)}/repayments/preview`,
+      { body: { amount }, ...withSignal(signal) },
+    ),
+
+  /** Pays it. Financial: one key per payment, held across any retry of that same payment. */
+  repay: (
+    loanId: string,
+    payload: { readonly amount: MoneyDto; readonly fromAccountId: string },
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<LoanRepayment> =>
+    apiClient.post<LoanRepayment>(`/loans/${encodeURIComponent(loanId)}/repayments`, {
+      body: payload,
+      idempotencyKey,
+      financial: true,
+      ...withSignal(signal),
+    }),
+} as const;
+
+/**
+ * Collateral: what the bank takes, and reading the documents that evidence it.
+ *
+ * NOT MARKED `financial`. Nothing here moves money. The upload needs no idempotency key
+ * either: the same bytes sent twice are recognised by their hash and the first document is
+ * returned, so a retry after a dropped connection is already harmless.
+ */
+export const collateralService = {
+  kinds: (signal?: AbortSignal): Promise<readonly CollateralKindInfo[]> =>
+    apiClient.get<readonly CollateralKindInfo[]>('/collateral/kinds', withSignal(signal)),
+
+  /**
+   * Uploads a document and reads it.
+   *
+   * FormData, not JSON — and the Content-Type is deliberately not set here. The browser
+   * generates the multipart boundary and writes the header itself; setting it by hand omits
+   * the boundary and the server receives a body it cannot split.
+   */
+  upload: (kind: string, file: File, signal?: AbortSignal): Promise<CollateralDocument> => {
+    const form = new FormData();
+    form.append('kind', kind);
+    form.append('file', file);
+
+    return apiClient.post<CollateralDocument>('/collateral/documents', {
+      body: form,
+      ...withSignal(signal),
+    });
+  },
 } as const;
 
 export const notificationService = {

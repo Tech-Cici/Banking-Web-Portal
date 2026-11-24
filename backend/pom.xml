@@ -149,6 +149,33 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!--
+            The bank's core banking system, which runs on SQL Server. Read-only, and a
+            separate pool from the one above: this service OWNS the Postgres database and
+            is a GUEST in the CBS. Version is managed by the Spring Boot parent.
+        -->
+        <!--
+            PDF STATEMENTS.
+
+            APACHE PDFBOX RATHER THAN ITEXT, on licence. iText 7 is AGPL, which asks a
+            project that distributes it to publish its own source; this repository may well
+            go private, and a dependency that decides that question for us is the wrong kind
+            of dependency to take. PDFBox is Apache-2.0 and asks nothing.
+
+            THE VERSION IS PINNED because Spring Boot's BOM does not manage PDFBox, so
+            without this the build would take whatever it resolved to on the day.
+        -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Test -->
         <dependency>

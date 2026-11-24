@@ -17,7 +17,7 @@ import {
   adultDateOfBirth,
   collect,
   digits,
-  digitsBetween,
+  bankAccountNumber,
   email as validateEmail,
   isValid,
   maxLength,
@@ -67,8 +67,6 @@ const EMPTY_DETAILS: DetailsForm = {
  * range is used rather than a guessed fixed length. The server is authoritative either
  * way — these only catch obvious typos.
  */
-const ACCOUNT_MIN = 10;
-const ACCOUNT_MAX = 16;
 const NATIONAL_ID_DIGITS = 16;
 
 function validateDetails(form: DetailsForm): FieldErrors<DetailsForm> {
@@ -79,7 +77,7 @@ function validateDetails(form: DetailsForm): FieldErrors<DetailsForm> {
     ],
     [
       'accountNumber',
-      digitsBetween(form.accountNumber, ACCOUNT_MIN, ACCOUNT_MAX, 'Account number'),
+      bankAccountNumber(form.accountNumber, 'Account number'),
     ],
     ['nationalId', digits(form.nationalId, NATIONAL_ID_DIGITS, 'National ID number')],
     ['dateOfBirth', adultDateOfBirth(form.dateOfBirth)],
@@ -120,7 +118,8 @@ export function PersonalRegistrationPage(): ReactElement {
     const issued = await submit.run(() =>
       registrationService.startPersonal({
         fullName: details.fullName.trim(),
-        accountNumber: details.accountNumber.replace(/\s/g, ''),
+        /* Upper case, because that is how the bank writes them and the CBS stores them. */
+        accountNumber: details.accountNumber.replace(/\s/g, '').toUpperCase(),
         nationalId: details.nationalId.replace(/\s/g, ''),
         dateOfBirth: details.dateOfBirth,
         phone: normalisePhone(details.phone),
@@ -131,6 +130,19 @@ export function PersonalRegistrationPage(): ReactElement {
     if (issued !== undefined) {
       setChallenge(issued);
       setCode('');
+
+      /*
+       * The server decides whether there is a code to enter, and says so by handing back
+       * a token. Skipping the step on a client-side setting would mean the screen and the
+       * server could disagree about whether an applicant was verified; this way they
+       * cannot.
+       */
+      if (issued.verificationToken !== undefined) {
+        setVerificationToken(issued.verificationToken);
+        setStep(2);
+        return;
+      }
+
       setStep(1);
     }
   };
@@ -399,7 +411,8 @@ export function PersonalRegistrationPage(): ReactElement {
               variant="secondary"
               disabled={submit.state.pending}
               onClick={() => {
-                setStep(1);
+                /* Back to the details, not to a code screen that was never shown. */
+                setStep(challenge?.verificationToken === undefined ? 1 : 0);
               }}
             >
               Back

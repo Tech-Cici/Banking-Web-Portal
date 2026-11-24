@@ -29,6 +29,16 @@ export interface OtpChallenge {
   readonly resendAfterSeconds: number;
   /** Partially masked destination, e.g. "***456". Never the full number. */
   readonly deliveryHint: string;
+  /**
+   * Present ONLY when the server has contact verification switched off.
+   *
+   * There is then no code to enter, so the server hands over the token the final step
+   * needs instead of emailing one. Its presence is the whole signal: a client that sees
+   * it skips the code screen, and one that ignores it still behaves correctly when
+   * verification is on. The client never decides this for itself -- whether an applicant
+   * must prove they can read their address is the server's rule, not a UI preference.
+   */
+  readonly verificationToken?: string;
 }
 
 /** Short-lived token proving a challenge was completed. */

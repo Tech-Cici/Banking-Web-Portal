@@ -19,6 +19,7 @@ import type {
 } from '@/types/movement';
 import type { MoneyDto } from '@/types/api';
 import { apiClient } from './apiClient';
+import type { DownloadedFile } from './apiClient';
 
 /**
  * Services for moving money and managing an account.
@@ -179,8 +180,18 @@ export const fxService = {
   byId: (quoteId: string, signal?: AbortSignal): Promise<FxQuote> =>
     apiClient.get<FxQuote>(`/fx/quote/${encodeURIComponent(quoteId)}`, withSignal(signal)),
 
+  /**
+   * Converts at a rate already held.
+   *
+   * BOTH ACCOUNTS ARE NAMED. The destination used to be worked out server-side from the
+   * bought currency, which for a customer holding two accounts in it meant the older one.
+   */
   submit: (
-    payload: { readonly quoteId: string; readonly sourceAccountId: string },
+    payload: {
+      readonly quoteId: string;
+      readonly sourceAccountId: string;
+      readonly destinationAccountId: string;
+    },
     idempotencyKey: string,
     signal?: AbortSignal,
   ): Promise<MovementReceipt> =>
@@ -224,12 +235,35 @@ export const standingOrderService = {
   },
 } as const;
 
+/**
+ * Statements.
+ *
+ * `produce` RETURNS THE FILE ITSELF, not a job to wait on. The server renders the document
+ * inside the request and sends it back with the name it chose, so there is nothing to poll
+ * and no state that can be READY while the file is not.
+ *
+ * NOT MARKED `financial`. Producing a statement moves no money, and the flag exists to turn a
+ * timeout into "this may have gone through" — which, for a read, would frighten a customer
+ * about nothing. Taking the same statement twice is harmless, so there is no idempotency key
+ * either.
+ */
 export const statementService = {
   list: (signal?: AbortSignal): Promise<readonly Statement[]> =>
     apiClient.get<readonly Statement[]>('/statements', withSignal(signal)),
 
-  request: (payload: StatementRequest, signal?: AbortSignal): Promise<Statement> =>
-    apiClient.post<Statement>('/statements', { body: payload, ...withSignal(signal) }),
+  produce: (payload: StatementRequest, signal?: AbortSignal): Promise<DownloadedFile> =>
+    apiClient.post<DownloadedFile>('/statements', {
+      body: payload,
+      responseType: 'blob',
+      ...withSignal(signal),
+    }),
+
+  /** The same statement again, re-rendered from the terms it was taken on. */
+  download: (id: string, signal?: AbortSignal): Promise<DownloadedFile> =>
+    apiClient.get<DownloadedFile>(`/statements/${encodeURIComponent(id)}/download`, {
+      responseType: 'blob',
+      ...withSignal(signal),
+    }),
 } as const;
 
 /*

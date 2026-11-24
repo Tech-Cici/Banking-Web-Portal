@@ -48,6 +48,15 @@ export interface ApiRequest {
    * been executed server-side. Never set this on a read.
    */
   readonly financial?: boolean;
+  /**
+   * What the response body is.
+   *
+   * `blob` is for endpoints that return a file rather than JSON — a statement PDF, a CSV.
+   * It changes only what happens on success: an error still arrives as a JSON envelope and
+   * is read the same way, because a server that refuses a download refuses it with a reason
+   * rather than with an empty file.
+   */
+  readonly responseType?: 'json' | 'blob';
 }
 
 /** Notified whenever the API reports the session is no longer valid. */
@@ -137,6 +146,37 @@ function parseRetryAfter(headers: Headers): number | undefined {
   return Math.max(0, Math.round((asDate - Date.now()) / 1000));
 }
 
+/**
+ * A file the server sent back, with the name it gave it.
+ *
+ * The name comes from Content-Disposition rather than being invented here: the server
+ * decides what a statement is called, and two places naming the same file is two places
+ * that can disagree about which period it covers.
+ */
+export interface DownloadedFile {
+  readonly blob: Blob;
+  readonly filename: string;
+}
+
+/**
+ * The filename from a Content-Disposition header, if it carries one.
+ *
+ * Handles the quoted form the server sends (`attachment; filename="statement-....pdf"`) and
+ * falls back to a generic name rather than to an empty one — a download with no name at all
+ * is one the browser saves as "download" with no extension, which on Windows means nothing
+ * opens it.
+ */
+function filenameFrom(headers: Headers, fallback: string): string {
+  const disposition = headers.get('Content-Disposition') ?? '';
+
+  const quoted = /filename="([^"]+)"/.exec(disposition);
+  if (quoted?.[1] !== undefined && quoted[1] !== '') return quoted[1];
+
+  const bare = /filename=([^;]+)/.exec(disposition);
+  const trimmed = bare?.[1]?.trim();
+  return trimmed === undefined || trimmed === '' ? fallback : trimmed;
+}
+
 /** Reads the body without letting a malformed payload mask the real status code. */
 async function readBody(response: Response): Promise<unknown> {
   if (response.status === 204 || response.status === 205) return undefined;
@@ -170,6 +210,7 @@ export async function apiRequest<TResponse>(request: ApiRequest): Promise<TRespo
     timeoutMs = appConfig.apiTimeoutMs,
     idempotencyKey,
     financial = false,
+    responseType = 'json',
   } = request;
 
   if (financial && idempotencyKey === undefined) {
@@ -184,11 +225,36 @@ export async function apiRequest<TResponse>(request: ApiRequest): Promise<TRespo
   const correlationId = newCorrelationId();
 
   const headers = new Headers({
-    Accept: 'application/json',
+    /*
+     * A FILE REQUEST ACCEPTS ANYTHING, and that is deliberate rather than lazy.
+     *
+     * It still has to accept JSON, because that is what a refusal looks like: sending
+     * `Accept: application/pdf` alone would invite a 406 in place of the error envelope that
+     * actually explains what went wrong.
+     *
+     * But it must not name the file types either. This client does not open what it
+     * downloads -- it hands the bytes to the browser's download machinery under the name
+     * and type the server chose -- so a list here would be a second copy of the server's
+     * list of acceptable uploads, kept in a file nobody edits when that list changes. It
+     * was `application/pdf, text/csv` until collateral documents arrived, which are also
+     * JPEG and PNG, and a photographed title deed came back 406 from a header that was
+     * describing a statement.
+     */
+    Accept: responseType === 'blob' ? '*/*' : 'application/json',
     [CORRELATION_HEADER]: correlationId,
   });
 
-  if (body !== undefined) {
+  /*
+   * FORM DATA SETS ITS OWN CONTENT TYPE, and must be left alone to do it.
+   *
+   * A multipart body is delimited by a boundary string the browser generates, and that
+   * boundary is part of the Content-Type header. Setting the header ourselves omits it, and
+   * the server then reads a body it cannot split into parts -- which arrives as an empty
+   * upload rather than as an error, so the failure looks like the customer attached nothing.
+   */
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+  if (body !== undefined && !isFormData) {
     headers.set('Content-Type', 'application/json');
   }
   if (idempotencyKey !== undefined) {
@@ -231,7 +297,7 @@ export async function apiRequest<TResponse>(request: ApiRequest): Promise<TRespo
     response = await fetch(buildUrl(path, query), {
       method,
       headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
       signal: combinedSignal,
       // Cookies are sent when the approved session architecture uses them; harmless for
       // bearer tokens. The server's CORS allow-list is what actually gates this.
@@ -292,6 +358,15 @@ export async function apiRequest<TResponse>(request: ApiRequest): Promise<TRespo
     warnIfBackendIsNotImplemented(path, error);
 
     throw error;
+  }
+
+  if (responseType === 'blob') {
+    const blob = await response.blob();
+    const file: DownloadedFile = {
+      blob,
+      filename: filenameFrom(response.headers, 'statement'),
+    };
+    return file as TResponse;
   }
 
   return (await readBody(response)) as TResponse;

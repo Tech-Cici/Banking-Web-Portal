@@ -12,6 +12,7 @@ import {
   type NewAccount,
   type ServiceRequestQueueItem,
 } from '@/types/admin';
+import type { ServiceRequestType } from '@/types/banking';
 import { activeStaff } from './data/activeSession';
 import {
   BENEFICIARIES,
@@ -412,9 +413,23 @@ function serviceRequestDeclinedEmail(
   ].join('\n');
 }
 
-/** "card" or "cheque book", as both the emails and the refusals word it. */
-function serviceRequestLabel(kind: 'CARD' | 'CHEQUE_BOOK'): string {
-  return kind === 'CARD' ? 'card' : 'cheque book';
+/**
+ * "card", "cheque book" or "loan application", as both the emails and the refusals word it.
+ *
+ * <p>THE THIRD VALUE IS HERE FOR THE TYPE, NOT FOR THE MOCK. Loan applications go to the
+ * real backend (VITE_LIVE_API lists `loans`), so nothing should reach this with one — but
+ * the union widened, and naming it explicitly beats a ternary that would have called a
+ * loan a cheque book if it ever did.
+ */
+function serviceRequestLabel(kind: ServiceRequestType): string {
+  switch (kind) {
+    case 'CARD':
+      return 'card';
+    case 'CHEQUE_BOOK':
+      return 'cheque book';
+    case 'LOAN_APPLICATION':
+      return 'loan application';
+  }
 }
 
 /**

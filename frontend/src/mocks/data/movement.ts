@@ -173,8 +173,18 @@ export function standingOrdersFor(userId: string): readonly StandingOrder[] {
   return STANDING_ORDERS.filter((item) => item.ownerId === userId);
 }
 
+/**
+ * The customer's statements.
+ *
+ * <p>A STATEMENT WITH NO ACCOUNT IS ONE THAT COVERS ALL OF THEM, so it belongs to anybody
+ * whose accounts are being listed. Filtering it out because its accountId is null -- which is
+ * what `includes(null)` does -- would hide exactly the statements this bank's customers take
+ * most, since one customer number carries one account per product.
+ */
 export function statementsForAccounts(accountIds: readonly string[]): readonly Statement[] {
-  return STATEMENTS.filter((item) => accountIds.includes(item.accountId));
+  return STATEMENTS.filter(
+    (item) => item.accountId === null || accountIds.includes(item.accountId),
+  );
 }
 
 /**

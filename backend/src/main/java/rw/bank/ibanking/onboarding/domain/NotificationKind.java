@@ -55,6 +55,33 @@ public enum NotificationKind {
     TRANSFER_REJECTED(NotificationSeverity.WARNING),
 
     /**
+     * Money arrived from somebody else.
+     *
+     * <p>THE OTHER HALF OF {@link #TRANSFER_RELEASED}, and the half that was missing. The
+     * sender was told their money had gone; the person it went to was told nothing, and
+     * found out by opening the account and reading the ledger. "Has it arrived" is the
+     * question a transfer actually raises, and it was the one event with no channel on the
+     * receiving side.
+     *
+     * <p>INFO, not SECURITY. Receiving money is ordinary, and a credit rendered as loudly
+     * as a password change would teach people to ignore the colour that matters.
+     */
+    TRANSFER_RECEIVED(NotificationSeverity.INFO),
+
+    /** A standing order paid on its due date. */
+    STANDING_ORDER_PAID(NotificationSeverity.INFO),
+
+    /**
+     * A standing order could not pay.
+     *
+     * <p>A WARNING, and arguably the most important row in this table. A standing order
+     * executes with no manager releasing it, so the customer is the only check there is on
+     * whether their rent went out. A missed payment rendered in the same grey as a routine
+     * message is a missed payment nobody notices until the landlord calls.
+     */
+    STANDING_ORDER_FAILED(NotificationSeverity.WARNING),
+
+    /**
      * The account's password was changed.
      *
      * <p>SECURITY, which the panel pins above everything else. This notification cannot
@@ -62,6 +89,16 @@ public enum NotificationKind {
      * value is reaching somebody who did NOT make it, and it is worthless if it sits fourth
      * in a list under a cheque book.
      */
+    /**
+     * A loan application was approved and the money paid in.
+     *
+     * <p>IN THE PORTAL AS WELL AS BY EMAIL, for the reason recorded on the service-request
+     * path: the email reaches an inbox, this reaches somebody who signs in without reading
+     * it. For a loan that matters more than for a cheque book -- the balance has changed, and
+     * a customer who cannot see why has been given money by a system that did not say so.
+     */
+    LOAN_GRANTED(NotificationSeverity.INFO),
+
     PASSWORD_CHANGED(NotificationSeverity.SECURITY),
 
     /**

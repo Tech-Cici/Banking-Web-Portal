@@ -7,11 +7,17 @@ import { accountService, fxService } from '@/services';
 import type { FxQuote, MovementReceipt } from '@/types/movement';
 import { formatDateTime } from '@/utils/datetime';
 import { formatMoneyDto, formatBalanceDto } from '@/utils/money';
+import { ACCOUNT_CURRENCIES } from '@/types/admin';
 import { MoneyFlowShell } from './MoneyFlowShell';
 import { useMoneyFlow } from './useMoneyFlow';
 import './money.css';
 
-const CURRENCIES = ['RWF', 'USD', 'EUR'] as const;
+/*
+ * THE BANK'S CURRENCIES, from the one list. This page had its own -- RWF, USD and EUR --
+ * which quietly omitted GBP, a currency customers hold accounts in and the bank quotes a
+ * rate for. A screen with its own copy of a list is a screen that falls behind it.
+ */
+const CURRENCIES = ACCOUNT_CURRENCIES;
 
 /**
  * Buys one currency with another, at the bank's quoted rate.
@@ -34,6 +40,14 @@ export function FxPage(): ReactElement {
   const [sourceId, setSourceId] = useState('');
   const [sellAmount, setSellAmount] = useState('');
   const [buyCurrency, setBuyCurrency] = useState('USD');
+
+  /*
+   * WHERE THE BOUGHT CURRENCY LANDS, chosen rather than guessed. The server used to work it
+   * out from the currency alone, which for a customer holding two dollar accounts meant the
+   * older of them -- and a fixed deposit is a locked term, not somewhere a conversion belongs
+   * by default.
+   */
+  const [destinationId, setDestinationId] = useState('');
   const [quote, setQuote] = useState<FxQuote | null>(null);
   const [quoteError, setQuoteError] = useState<unknown>(null);
   const [quoting, setQuoting] = useState(false);
@@ -42,9 +56,18 @@ export function FxPage(): ReactElement {
   const source = list.find((account) => account.id === sourceId);
   const sellCurrency = source?.currency ?? 'RWF';
 
+  /* Only an account held in the currency being bought can receive it. */
+  const canReceive = list.filter(
+    (account) => account.currency === buyCurrency && account.id !== sourceId,
+  );
+
   const flow = useMoneyFlow<MovementReceipt>((idempotencyKey, signal) =>
     fxService.submit(
-      { quoteId: quote?.quoteId ?? '', sourceAccountId: sourceId },
+      {
+        quoteId: quote?.quoteId ?? '',
+        sourceAccountId: sourceId,
+        destinationAccountId: destinationId,
+      },
       idempotencyKey,
       signal,
     ),
@@ -70,6 +93,7 @@ export function FxPage(): ReactElement {
     if (sourceId === '') return 'Choose the account to sell from.';
     if (sellAmount === '' || Number(sellAmount) <= 0) return 'Enter an amount to convert.';
     if (sellCurrency === buyCurrency) return 'Choose two different currencies.';
+    if (destinationId === '') return 'Choose the account the money goes into.';
     if (quote === null) return 'Get a rate before continuing.';
     return undefined;
   };
@@ -138,9 +162,30 @@ export function FxPage(): ReactElement {
             }))}
             onChange={(event) => {
               setBuyCurrency(event.target.value);
+              /* The old destination is in the wrong currency now. */
+              setDestinationId('');
               setQuote(null);
             }}
           />
+
+          {/*
+            WHICH ACCOUNT IT ARRIVES IN. Not derived from the currency: a customer holding
+            voluntary savings and a fixed deposit in dollars has two real choices, and only
+            they know which one they meant.
+          */}
+          <AccountSelector
+            label="Into"
+            accounts={canReceive}
+            value={destinationId}
+            onChange={setDestinationId}
+          />
+
+          {canReceive.length === 0 && (
+            <Alert tone="info">
+              You have no {buyCurrency} account for the money to arrive in. The bank has to open
+              one before you can buy {buyCurrency}.
+            </Alert>
+          )}
 
           <div className="money__actions" style={{ marginTop: 'var(--space-4)' }}>
             <Button

@@ -24,7 +24,7 @@ import type {
 import {
   collect,
   digits,
-  digitsBetween,
+  bankAccountNumber,
   email as validateEmail,
   isValid,
   minLength,
@@ -165,7 +165,7 @@ function validateCompany(form: CompanyForm): FieldErrors<CompanyForm> {
     ['address', minLength(form.address, 5, 'Registered address')],
     ['companyEmail', validateEmail(form.companyEmail, 'Company email')],
     ['companyPhone', rwandanPhone(form.companyPhone, 'Company phone')],
-    ['existingAccountNumber', digitsBetween(form.existingAccountNumber, 10, 16, 'Account number')],
+    ['existingAccountNumber', bankAccountNumber(form.existingAccountNumber, 'Account number')],
     ['contactFullName', minLength(form.contactFullName, 2, 'Full name')],
     ['contactRole', required(form.contactRole, 'Role')],
     ['contactEmail', validateEmail(form.contactEmail, 'Contact email')],

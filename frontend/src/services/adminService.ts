@@ -4,17 +4,21 @@ import {
   normaliseCustomer,
   type Application,
   type BeneficiaryReview,
+  type CbsCustomer,
   type CreateCustomerRequest,
   type CreatedCustomer,
   type Customer,
   type OutboxMessage,
   type PasswordRequest,
   type PendingTransfer,
+  type GrantLoanRequest,
+  type PledgedItem,
   type ServiceRequestQueueItem,
   type StaffUser,
 } from '@/types/admin';
 import type { ChangeTemporaryPasswordRequest, StaffLoginResult } from '@/types/auth';
 import { apiClient } from './apiClient';
+import type { DownloadedFile } from './apiClient';
 
 /**
  * The bank's own portal.
@@ -82,6 +86,21 @@ export const staffAuthService = {
   },
 } as const;
 
+/**
+ * What is printed on a card the bank has produced.
+ *
+ * FOUR DIGITS, NOT A CARD NUMBER. The server has no column that could hold a full PAN and
+ * refuses anything that is not exactly four digits, so this type is the narrowest thing
+ * that can describe a card without being able to carry one.
+ */
+export interface IssuedCardDetails {
+  readonly lastFour: string;
+  readonly brand: string;
+  readonly cardType: 'DEBIT' | 'PREPAID';
+  readonly expiryMonth: number;
+  readonly expiryYear: number;
+}
+
 export const adminService = {
   applications: (status?: string, signal?: AbortSignal): Promise<readonly Application[]> =>
     apiClient
@@ -120,6 +139,23 @@ export const adminService = {
    * passwords for one person, and the second would be the one the customer never
    * received.
    */
+  /**
+   * What the bank's records say about an account number.
+   *
+   * STAFF ONLY, and the server enforces that rather than this file. What comes back --
+   * somebody's name, their status, what they hold -- is exactly what a stranger would want
+   * in order to impersonate them, which is why no public endpoint answers this question.
+   *
+   * 404 means the bank has no such account, which is grounds to refuse an application.
+   * 503 means the core system could not be asked, which is grounds to wait. The caller
+   * has to keep those apart.
+   */
+  cbsCustomer: (accountNumber: string, signal?: AbortSignal): Promise<CbsCustomer> =>
+    apiClient.get<CbsCustomer>(
+      `/admin/cbs/accounts/${encodeURIComponent(accountNumber)}`,
+      withSignal(signal),
+    ),
+
   createAccount: (
     applicationId: string,
     payload: CreateCustomerRequest,
@@ -340,15 +376,35 @@ export const adminService = {
    * THE COLLECTION POINT IS REQUIRED and is free text, not a choice from a list. The
    * portal has no branch list — the six names the request form used to offer were invented
    * by the front end — so the one party who knows where the thing physically is types it.
+   *
+   * `card` IS WHAT THE MEMBER OF STAFF READS OFF THE PLASTIC, and is how a card comes to
+   * exist in this system at all: the portal never generates a card number, a brand or an
+   * expiry date, because it does not know them. Supplied for a CARD, absent for a cheque
+   * book. Only four digits are sent — there is nowhere on the server to put more.
    */
   markServiceRequestReady: (
     id: string,
     collectionPoint: string,
+    card?: IssuedCardDetails,
     signal?: AbortSignal,
   ): Promise<ServiceRequestQueueItem> =>
     apiClient.post<ServiceRequestQueueItem>(
       `/admin/service-requests/${encodeURIComponent(id)}/ready`,
-      { body: { collectionPoint }, ...withSignal(signal) },
+      {
+        body: {
+          collectionPoint,
+          ...(card === undefined
+            ? {}
+            : {
+                cardLastFour: card.lastFour,
+                cardBrand: card.brand,
+                cardType: card.cardType,
+                cardExpiryMonth: card.expiryMonth,
+                cardExpiryYear: card.expiryYear,
+              }),
+        },
+        ...withSignal(signal),
+      },
     ),
 
   /** Records that it was handed over. No email: the customer is at the counter. */
@@ -359,6 +415,57 @@ export const adminService = {
     apiClient.post<ServiceRequestQueueItem>(
       `/admin/service-requests/${encodeURIComponent(id)}/collected`,
       withSignal(signal),
+    ),
+
+  /**
+   * What is pledged against one loan application, with what the document says.
+   *
+   * ITS OWN REQUEST, NOT PART OF THE QUEUE. Re-reading every stored document to build the
+   * list of open requests would make that list pay for detail nobody has asked to see; a
+   * reviewer opens one application at a time.
+   *
+   * EMPTY IS A REAL ANSWER, not a failure. Small loans require no security, so an empty
+   * array means "nothing was pledged, and none was required" -- the screen says so rather
+   * than showing a gap where a document would be.
+   */
+  collateralFor: (id: string, signal?: AbortSignal): Promise<readonly PledgedItem[]> =>
+    apiClient.get<readonly PledgedItem[]>(
+      `/admin/service-requests/${encodeURIComponent(id)}/collateral`,
+      withSignal(signal),
+    ),
+
+  /**
+   * The pledged document itself.
+   *
+   * A DIFFERENT ENDPOINT FROM THE CUSTOMER'S, because the ownership check is the opposite
+   * one: the customer may fetch only what they uploaded, and a reviewer may fetch anything
+   * on an application they are entitled to decide. The server keeps them as two methods
+   * for that reason, and so does this.
+   *
+   * It comes back as an attachment with sniffing turned off. The bytes came from outside
+   * the bank and are never rendered in the page.
+   */
+  collateralDocument: (documentId: string, signal?: AbortSignal): Promise<DownloadedFile> =>
+    apiClient.get<DownloadedFile>(
+      `/admin/collateral/documents/${encodeURIComponent(documentId)}/file`,
+      { responseType: 'blob', ...withSignal(signal) },
+    ),
+
+  /**
+   * Grants a loan application: creates the loan, pays it in, closes the application.
+   *
+   * NOT `markServiceRequestCollected`. That records a thing handed over a counter, which is
+   * what a cheque book is and a loan is not. The server refuses to grant anything that is not
+   * a loan application, and refuses to collect one.
+   */
+  grantLoan: (
+    id: string,
+    terms: GrantLoanRequest,
+    signal?: AbortSignal,
+  ): Promise<ServiceRequestQueueItem> =>
+    apiClient.post<ServiceRequestQueueItem>(
+      `/admin/service-requests/${encodeURIComponent(id)}/grant-loan`,
+      { body: terms, ...withSignal(signal) },
     ),
 
   /** Declines it. The reason is shown and emailed to the customer, so it is required. */

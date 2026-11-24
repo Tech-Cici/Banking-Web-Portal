@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import rw.bank.ibanking.common.money.Money;
 import rw.bank.ibanking.exception.BusinessRuleException;
 import rw.bank.ibanking.exception.ResourceNotFoundException;
+import rw.bank.ibanking.onboarding.domain.AccountType;
 import rw.bank.ibanking.onboarding.domain.AccountTransactionEntity;
 import rw.bank.ibanking.onboarding.domain.CompanyEntity;
 import rw.bank.ibanking.onboarding.domain.CustomerAccountEntity;
@@ -158,7 +159,14 @@ public class TransferService {
         CustomerAccountEntity found =
                 destinationOrRefuse(
                         customerId,
-                        new Instruction(null, accountNumber, null, null, null, null));
+                        new Instruction(null, accountNumber, null, null, null, null),
+                        /*
+                         * No currency yet: this runs before an amount exists, to show the
+                         * holder's name so a mistyped digit is caught early. The account
+                         * it lands on is the one a send would use, so the currency shown
+                         * is the currency a send would need.
+                         */
+                        null);
 
         /*
          * Logged with the MASK, never the number the caller typed. A log of full account
@@ -194,17 +202,51 @@ public class TransferService {
             return replay.get();
         }
 
-        CustomerAccountEntity destination = destinationOrRefuse(customerId, instruction);
-
         /*
          * The source, locked. Two transfers out of one account arriving together would
          * otherwise both read the old balance and both decide there is enough.
+         *
+         * RESOLVED BEFORE THE DESTINATION, which it did not used to be. A typed account
+         * number names a CUSTOMER rather than one account -- every product a person holds
+         * carries the same number -- so the destination cannot be chosen without knowing
+         * which currency is being sent. The only cost of the swap is which refusal a
+         * caller meets first when several apply.
          */
         CustomerAccountEntity source = sourceOrRefuse(customerId, instruction.sourceAccountId());
+
+        CustomerAccountEntity destination =
+                destinationOrRefuse(customerId, instruction, source.currency());
 
         if (source.id().equals(destination.id())) {
             throw new BusinessRuleException(
                     "That is the same account. Choose a different one to send to.");
+        }
+
+        /*
+         * ONLY A CURRENT ACCOUNT SENDS MONEY OUT OF THE BANK.
+         *
+         * The bank's other products are savings: compulsory and voluntary savings, a
+         * fixed deposit, education savings. They are places money is kept, not places it
+         * is paid from, and paying a stranger straight out of a fixed deposit is not
+         * something a teller would let somebody do either.
+         *
+         * MEASURED BY WHO HOLDS THE DESTINATION, not by which field the client filled in.
+         * A customer can reach their own account by picking it from a list or by typing
+         * its number, and a rule written against the field would apply to one and not the
+         * other -- so the way around it would be to type the number. `mayAct` is the same
+         * question the source is checked with, asked about the far side.
+         *
+         * MOVING MONEY BETWEEN YOUR OWN ACCOUNTS IS NOT AFFECTED. Sweeping a current
+         * account into savings, or drawing savings back into a current account, stays
+         * open in both directions: nothing leaves the customer, so there is nobody to
+         * protect from the withdrawal.
+         */
+        boolean leavingTheCustomer = !access.mayAct(customerId, destination);
+
+        if (leavingTheCustomer && source.accountType() != AccountType.CURRENT) {
+            throw new BusinessRuleException(
+                    "Payments to someone else go from your current account. Move the money"
+                            + " to your current account first, then send it.");
         }
 
         /*
@@ -412,6 +454,12 @@ public class TransferService {
                                 destination.maskedNumber(),
                                 transfer.reference()));
 
+        /*
+         * AND SO IS THE PERSON IT WENT TO, which nothing did before. Their account was
+         * credited and the only trace was a ledger line they had to go looking for.
+         */
+        notifyTheRecipient(transfer, destination, sender);
+
         log.info(
                 "Transfer {} approved by {}: {} delivered to {}",
                 transfer.id(),
@@ -523,6 +571,39 @@ public class TransferService {
                 .ifPresent(notify);
     }
 
+    /**
+     * Tells the account holder the money arrived.
+     *
+     * <p>NOT WHEN IT IS THEIR OWN MONEY MOVING BETWEEN THEIR OWN ACCOUNTS. One action
+     * would produce "Your transfer has been sent" and "You received" together, which reads
+     * as two separate events; a panel that double-counts the customer's own moves is one
+     * they stop trusting for the case it exists to cover.
+     *
+     * <p>The sender is read from the SOURCE ACCOUNT, not from the manager who released it.
+     * The manager approved the payment; they did not make it.
+     */
+    private void notifyTheRecipient(
+            TransferEntity transfer, CustomerAccountEntity destination, Counterparty sender) {
+
+        UUID recipient = destination.customerId();
+
+        boolean movingTheirOwnMoney =
+                accounts
+                        .findById(transfer.sourceAccountId())
+                        .map(CustomerAccountEntity::customerId)
+                        .filter(recipient::equals)
+                        .isPresent();
+
+        if (movingTheirOwnMoney) return;
+
+        notifications.transferReceived(
+                recipient,
+                transfer.amount(),
+                sender.name(),
+                sender.mask(),
+                transfer.reference());
+    }
+
     private TransferEntity pendingOrRefuse(UUID transferId) {
         TransferEntity transfer =
                 transfers
@@ -549,7 +630,8 @@ public class TransferService {
      * client that sent a picked account and a typed number together has a bug, and
      * guessing which the person meant is guessing where their money goes.
      */
-    private CustomerAccountEntity destinationOrRefuse(UUID customerId, Instruction instruction) {
+    private CustomerAccountEntity destinationOrRefuse(
+            UUID customerId, Instruction instruction, String wantedCurrency) {
         String number = instruction.destinationAccountNumber();
         boolean hasNumber = number != null && !number.isBlank();
         boolean hasId = instruction.destinationAccountId() != null;
@@ -589,14 +671,46 @@ public class TransferService {
          * Masks are not accepted and could not be: they are not unique, so a mask would
          * name several accounts and the service would be choosing whose money arrives.
          */
-        return accounts.findByAccountNumberAndRemovedAtIsNull(number.trim()).stream()
+        List<CustomerAccountEntity> held =
+                accounts.findByAccountNumberAndRemovedAtIsNull(number.trim());
+
+        /*
+         * MONEY FROM OUTSIDE LANDS IN THE CURRENT ACCOUNT, and that is a banking rule
+         * rather than a tidy default.
+         *
+         * This used to be `.findFirst()`, which was right while one number meant one
+         * account. It stopped being right the moment a customer could hold several
+         * products under one number: the first row the database happened to return got
+         * the money, so a payment could arrive in somebody's fixed deposit. It completed,
+         * it said Completed, and the account the sender meant never moved -- the worst
+         * shape a money bug can take, because nothing looks wrong.
+         *
+         * The comment above says a mask is refused because it "would name several
+         * accounts and the service would be choosing whose money arrives". A bare account
+         * number now names several accounts too. This is the answer to that: not the
+         * first one, but the one a bank would credit.
+         */
+        List<CustomerAccountEntity> current =
+                held.stream().filter(a -> a.accountType() == AccountType.CURRENT).toList();
+
+        return current.stream()
+                /*
+                 * Among current accounts, the one in the currency being sent. A customer
+                 * can hold a current account in each of RWF, USD, EUR and GBP, and the
+                 * transfer refuses a currency mismatch a few lines later anyway -- so
+                 * picking the matching one here turns "these accounts are in different
+                 * currencies" into a transfer that simply works.
+                 */
+                .filter(a -> wantedCurrency == null || wantedCurrency.equals(a.currency()))
                 .findFirst()
+                .or(() -> current.stream().findFirst())
                 .orElseThrow(
                         () ->
                                 /*
-                                 * The same answer whether the number is wrong or the
-                                 * account was removed. Distinguishing them would tell
-                                 * somebody probing numbers which ones used to exist.
+                                 * The same answer whether the number is wrong, the account
+                                 * was removed, or the holder has no current account.
+                                 * Distinguishing them would tell somebody probing numbers
+                                 * which ones used to exist and what the holder keeps.
                                  */
                                 new ResourceNotFoundException(
                                         "We could not find an account with that number."));

@@ -423,7 +423,7 @@ class CustomerSignInTest extends OnboardingIntegrationTest {
          * exposed, because no banking endpoint exists yet, but the first one to land would
          * have been reachable with a password bank staff had just read aloud.
          */
-        mvc.perform(get("/api/v1/cards").session(gated)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/fx").session(gated)).andExpect(status().isForbidden());
         mvc.perform(get("/api/v1/transfers").session(gated)).andExpect(status().isForbidden());
     }
 
@@ -718,13 +718,24 @@ class CustomerSignInTest extends OnboardingIntegrationTest {
          * Paired with temporaryPasswordSessionIsRefusedElsewhere(), which gets 403 on this
          * same path, so the pair isolates authorisation from routing.
          *
-         * THE PATH MOVED FROM /accounts TO /cards, and the reason is worth recording: this
-         * pair needs a path with NO controller, and /accounts grew one when customers
-         * began seeing the accounts an administrator enters for them. If /cards is ever
-         * implemented, move this pair again rather than changing the expectation — the
-         * whole value of these two tests is the contrast between 403 and 404 on one path.
+         * THE PATH HAS MOVED TWICE, and both moves are the same event: this pair needs a
+         * path with NO controller, and the portal keeps growing controllers.
+         *
+         * /accounts -> /cards, when customers began seeing the accounts an administrator
+         * enters for them. /cards -> /fx, when cards were implemented and this assertion
+         * started reading 200.
+         *
+         * MOVE IT AGAIN RATHER THAN CHANGING THE EXPECTATION, as the previous note said and
+         * as was done here. The whole value of these two tests is the contrast between 403
+         * and 404 on ONE path: 403 proves a MUST_CHANGE_PASSWORD session is stopped by
+         * authorisation, 404 proves a settled session got past it as far as routing.
+         * Relaxing the 404 to whatever the new controller returns would delete the only
+         * thing the pair measures.
+         *
+         * /fx was chosen because foreign exchange is the furthest from anything planned.
+         * Loans is next, and statements and payments are likely after that.
          */
-        mvc.perform(get("/api/v1/cards").session(session)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/fx").session(session)).andExpect(status().isNotFound());
     }
 
     @Test

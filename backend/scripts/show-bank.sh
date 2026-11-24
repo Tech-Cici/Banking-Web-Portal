@@ -12,6 +12,9 @@
 #   ./scripts/show-bank.sh login      why a customer cannot sign in
 #   ./scripts/show-bank.sh transfer   why a transfer is refused: every field the
 #                                     money control reads, per account
+#   ./scripts/show-bank.sh collateral what was pledged against a loan application, what
+#                                     the reader found on the document, and where the
+#                                     customer's typing disagreed with the page
 #
 # It deliberately does NOT print password hashes. There is nothing useful in them and a
 # hash on a terminal is a hash in a screenshot. Full account numbers are behind
@@ -339,6 +342,84 @@ JOIN customer_accounts src ON src.id = t.source_account_id
 JOIN customer_accounts dst ON dst.id = t.destination_account_id
 ORDER BY t.submitted_at DESC
 LIMIT 20;
+SQL
+fi
+
+if [ "${1:-}" = "collateral" ]; then
+  run <<'SQL'
+\echo
+\echo '=========================== WHAT IS SECURING A LOAN ============================='
+\echo
+\echo 'One row per pledged item. "read" is what OCR thought the page said and is'
+\echo 'evidence of nothing on its own; "declared" is what the customer submitted and is'
+\echo 'what the bank holds them to. The verdict was recorded once, at submission.'
+\echo
+\echo 'The document BYTES are never printed here. A scanned title deed is not a thing'
+\echo 'to leave on a terminal or in a screenshot. Fetch one from the staff portal if you'
+\echo 'need to look at it.'
+SELECT
+  sr.reference                                   AS "application",
+  c.full_name                                    AS "customer",
+  lc.kind                                        AS "kind",
+  lc.description                                 AS "what it is",
+  cd.original_filename                           AS "document",
+  round(cd.size_bytes / 1024.0)                  AS "KB",
+  cd.ocr_status                                  AS "reading",
+  (SELECT count(*) FROM collateral_fields f
+    WHERE f.collateral_id = lc.id)               AS "fields",
+  (SELECT count(*) FROM collateral_fields f
+    WHERE f.collateral_id = lc.id
+      AND f.agreement = 'DIFFERENT')             AS "differ"
+FROM loan_collateral lc
+JOIN collateral_documents cd ON cd.id = lc.document_id
+JOIN service_requests    sr ON sr.id = lc.service_request_id
+JOIN customers            c ON c.id  = lc.customer_id
+ORDER BY lc.created_at DESC
+LIMIT 20;
+
+\echo
+\echo '--------------------------- DECLARED AGAINST THE PAGE ---------------------------'
+SELECT
+  sr.reference                       AS "application",
+  lc.kind                            AS "kind",
+  f.field_key                        AS "field",
+  f.declared_value                   AS "declared",
+  coalesce(f.read_value, '(not read)') AS "read off the page",
+  f.agreement                        AS "verdict"
+FROM collateral_fields f
+JOIN loan_collateral   lc ON lc.id = f.collateral_id
+JOIN service_requests  sr ON sr.id = lc.service_request_id
+ORDER BY lc.created_at DESC, f.field_key
+LIMIT 60;
+
+\echo
+\echo '------------------------- UPLOADS ATTACHED TO NOTHING ---------------------------'
+\echo 'A customer who uploaded a title deed and then abandoned the form. These are what'
+\echo 'the sweep deletes: a title deed attached to no application is exactly the data'
+\echo 'that should not be sitting in a bank database.'
+SELECT
+  cd.original_filename                                    AS "document",
+  cd.kind                                                 AS "kind",
+  round(cd.size_bytes / 1024.0)                           AS "KB",
+  cd.ocr_status                                           AS "reading",
+  to_char(cd.uploaded_at, 'YYYY-MM-DD HH24:MI')           AS "uploaded",
+  round(extract(epoch FROM (now() - cd.uploaded_at)) / 3600) AS "hours old"
+FROM collateral_documents cd
+WHERE cd.linked_at IS NULL
+ORDER BY cd.uploaded_at DESC
+LIMIT 20;
+
+\echo
+\echo '-------------------------- READINGS THAT WENT WRONG ------------------------------'
+SELECT
+  cd.original_filename  AS "document",
+  cd.ocr_status         AS "reading",
+  cd.ocr_engine         AS "engine",
+  cd.ocr_failure        AS "what it said"
+FROM collateral_documents cd
+WHERE cd.ocr_status <> 'READ'
+ORDER BY cd.uploaded_at DESC
+LIMIT 10;
 SQL
 fi
 

@@ -25,6 +25,7 @@ import {
   describeAccountMasks,
   describeCustomerAccounts,
   type Application,
+  type CbsCustomer,
   type CreatedCustomer,
   type NewAccount,
 } from '@/types/admin';
@@ -216,6 +217,60 @@ export function ApplicationDetailPage(): ReactElement {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<unknown>(null);
   const [created, setCreated] = useState<CreatedCustomer | null>(null);
+
+  /*
+   * WHAT THE BANK'S RECORDS SAY, once somebody has asked.
+   *
+   * Null until fetched, and never fetched automatically. Opening an application should not
+   * silently pull a customer's name, status and holdings out of the core system: the
+   * lookup is an act a member of staff takes, and it is one their session is recorded
+   * against.
+   */
+  const [cbs, setCbs] = useState<CbsCustomer | null>(null);
+  const [cbsBusy, setCbsBusy] = useState(false);
+  const [cbsFailure, setCbsFailure] = useState<unknown>(null);
+
+  /**
+   * Fills the rows below from the account number on the application.
+   *
+   * ONE NUMBER, SEVERAL PRODUCTS. Zigama issues a customer a single number and the
+   * products under it are told apart by name and currency, so every row here carries the
+   * same number and differs by type. A zero balance in the core system is not returned at
+   * all, which is the rule that decides what a customer ends up holding.
+   *
+   * THE OPENING BALANCE IS THE BANK'S FIGURE, copied rather than typed. It was a free-text
+   * box a person read off another screen and retyped, which is a transcription error
+   * waiting to become somebody's balance.
+   */
+  const fetchFromBank = (): void => {
+    const number = application.accountNumber ?? '';
+    if (number === '') return;
+
+    setCbsBusy(true);
+    setCbsFailure(null);
+
+    void adminService
+      .cbsCustomer(number)
+      .then((found) => {
+        setCbs(found);
+        setAccounts(
+          found.holdings.map((holding) => ({
+            id: crypto.randomUUID(),
+            accountNumber: found.accountNumber,
+            accountType: holding.product,
+            currency: holding.currency,
+            openingBalance: holding.balance,
+          })),
+        );
+      })
+      .catch((cause: unknown) => {
+        setCbsFailure(cause);
+        setCbs(null);
+      })
+      .finally(() => {
+        setCbsBusy(false);
+      });
+  };
 
   /**
    * The server's per-field complaints, indexed by the input they belong to.
@@ -546,6 +601,59 @@ export function ApplicationDetailPage(): ReactElement {
                   ? `One row per account ${application.displayName} holds, read from the bank's records. A company with a current and a savings account needs two rows; a foreign-currency account is a row whose currency is not RWF.`
                   : "One row per account the customer holds, read from the bank's records. Somebody with a current and a savings account needs two rows; a foreign-currency account is a row whose currency is not RWF."}
               </p>
+
+              <div className="staff__cbs">
+                <Button
+                  variant="secondary"
+                  loading={cbsBusy}
+                  disabled={(application.accountNumber ?? '') === ''}
+                  onClick={fetchFromBank}
+                >
+                  {cbs === null ? "Fetch from the bank's records" : 'Fetch again'}
+                </Button>
+
+                {(application.accountNumber ?? '') === '' && (
+                  <p className="dash__note">
+                    This application carries no account number, so there is nothing to look
+                    up. Enter the accounts by hand.
+                  </p>
+                )}
+
+                {cbsFailure !== null && (
+                  <ErrorNotice error={cbsFailure} action="look this account up in the bank's records" />
+                )}
+
+                {cbs !== null && (
+                  <ReviewPanel
+                    caption="The bank's records"
+                    rows={[
+                      { label: 'Name', value: cbs.name },
+                      {
+                        label: 'Matches the application',
+                        value:
+                          cbs.name.trim().toLowerCase() ===
+                          application.displayName.trim().toLowerCase()
+                            ? 'Yes'
+                            : 'NO \u2014 the name on the application is different',
+                      },
+                      { label: 'Phone', value: cbs.telephoneMask },
+                      { label: 'Customer type', value: cbs.customerType },
+                      {
+                        label: 'Status',
+                        value: cbs.dormant ? `${cbs.status} \u2014 dormant` : cbs.status,
+                      },
+                      { label: 'Opened', value: cbs.openedOn ?? 'Not recorded' },
+                      {
+                        label: 'Accounts held',
+                        value:
+                          cbs.holdings.length === 0
+                            ? 'None with a balance'
+                            : String(cbs.holdings.length),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
 
               {accounts.map((entry, index) => (
                 <div className="staff__account-row" key={entry.id}>

@@ -11,6 +11,7 @@ import {
   Skeleton,
   TextField,
 } from '@/components/ui';
+import { BRAND } from '@/config/brand';
 import { useAsync } from '@/hooks/useAsync';
 import { useSession } from '@/hooks/useSession';
 import { RETAIL_PATHS } from '@/routes/paths';
@@ -89,6 +90,28 @@ export function SendMoneyPage(): ReactElement {
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   const list = accounts.state.status === 'ready' ? accounts.state.data : [];
+
+  /*
+   * WHAT MAY BE SENT FROM, which is not the same question as what the customer holds.
+   *
+   * Paying somebody else goes from a current account. The bank's other products are
+   * savings -- compulsory, voluntary, a fixed deposit, education savings -- and they are
+   * where money is kept rather than where it is paid from. The server refuses the rest,
+   * and this list exists so nobody meets that refusal: offering a compulsory savings
+   * account in a picker, letting somebody fill in an amount and a reference and read a
+   * review screen, and only then saying no, is a worse way to enforce a rule than not
+   * offering it.
+   *
+   * MOVING MONEY BETWEEN YOUR OWN ACCOUNTS KEEPS THE FULL LIST. Nothing leaves the
+   * customer, so there is nobody to protect from the withdrawal, and sweeping savings
+   * into a current account is the normal way to get money ready to send.
+   *
+   * THE SERVER STILL DECIDES. This is the same rule written where the person can see it,
+   * not instead of where it is enforced -- a filtered dropdown is one request away from
+   * not existing.
+   */
+  const sendableFrom =
+    destination === 'MINE' ? list : list.filter((account) => account.accountType === 'CURRENT');
   const source = list.find((account) => account.id === sourceId);
   const currency = source?.currency ?? 'RWF';
 
@@ -260,7 +283,7 @@ export function SendMoneyPage(): ReactElement {
     <article className="money__narrow">
       <PageHeader
         title="Send money"
-        lead="To another account in this demo. Every transfer is released by a manager."
+        lead={`To another account at ${BRAND.SHORT}. Every transfer is released by a manager.`}
         crumbs={[{ label: 'Transfers', to: RETAIL_PATHS.transfers }]}
       />
 
@@ -377,7 +400,7 @@ export function SendMoneyPage(): ReactElement {
       >
         <AccountSelector
           label="From"
-          accounts={list}
+          accounts={sendableFrom}
           value={sourceId}
           debitOnly
           excludeId={destination === 'MINE' ? ownDestinationId : ''}
@@ -415,6 +438,20 @@ export function SendMoneyPage(): ReactElement {
               onClick={() => {
                 setDestination('SOMEBODY_ELSE');
                 setOwnDestinationId('');
+                /*
+                 * A SOURCE PICKED UNDER THE OTHER RULE IS DROPPED HERE.
+                 *
+                 * The "from" list narrows to current accounts on this click, but the id
+                 * already in state does not narrow with it. A select whose value matches
+                 * none of its options simply renders nothing selected, so the savings
+                 * account disappears from the dropdown while remaining the thing that
+                 * gets sent -- which is how a review screen comes to say "From:
+                 * Compulsory savings" above a picker that looks empty.
+                 */
+                setSourceId((chosen) => {
+                  const picked = list.find((account) => account.id === chosen);
+                  return picked !== undefined && picked.accountType !== 'CURRENT' ? '' : chosen;
+                });
                 setFailure(null);
               }}
             >
@@ -470,7 +507,7 @@ export function SendMoneyPage(): ReactElement {
           hint={
             source === undefined
               ? undefined
-              : `Available: ${formatBalanceDto(source.availableBalance)}. There is no transfer fee inside this demo.`
+              : `Available: ${formatBalanceDto(source.availableBalance)}. There is no transfer fee inside ${BRAND.SHORT}.`
           }
         />
 

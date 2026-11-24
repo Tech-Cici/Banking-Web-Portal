@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import rw.bank.ibanking.config.OutboundMailProperties;
+import rw.bank.ibanking.config.RegistrationProperties;
 import rw.bank.ibanking.exception.BusinessRuleException;
 import rw.bank.ibanking.exception.RateLimitedException;
 import rw.bank.ibanking.onboarding.domain.ApplicationEntity;
@@ -73,6 +74,7 @@ public class RegistrationService {
     private final BusinessDocumentRepository documents;
     private final Mailer mailer;
     private final OutboundMailProperties mailSettings;
+    private final RegistrationProperties registrationSettings;
     private final ObjectMapper json;
 
     RegistrationService(
@@ -84,6 +86,7 @@ public class RegistrationService {
             BusinessDocumentRepository documents,
             Mailer mailer,
             OutboundMailProperties mailSettings,
+            RegistrationProperties registrationSettings,
             ObjectMapper json) {
         this.verifications = verifications;
         this.attempts = attempts;
@@ -93,14 +96,50 @@ public class RegistrationService {
         this.documents = documents;
         this.mailer = mailer;
         this.mailSettings = mailSettings;
+        this.registrationSettings = registrationSettings;
         this.json = json;
     }
 
     /** What the caller needs to enter a code. */
-    public record Challenge(String challengeId, int otpLength, long resendAfterSeconds, String deliveryHint) {}
+    /**
+     * What the caller needs to enter a code.
+     *
+     * <p>{@code verificationToken} is NULL in the normal case, and set only when contact
+     * verification is switched off -- there is then no code to enter, so the token the
+     * final step needs is handed over here instead. A client that treats a present token
+     * as "skip the code screen" needs no other signal, and a client that ignores the
+     * field still works when verification is on.
+     */
+    public record Challenge(
+            String challengeId,
+            int otpLength,
+            long resendAfterSeconds,
+            String deliveryHint,
+            String verificationToken) {}
 
     /** Proof that a code was entered, exchanged at the final step. */
     public record Verified(String verificationToken, long expiresInSeconds) {}
+
+    /**
+     * Hands back a usable token without sending anything, when verification is off.
+     *
+     * <p>Takes the SAME path a correct code takes -- {@link VerificationCodes#newToken()},
+     * then consume -- rather than a second way of minting a token. One route to a valid
+     * token means one place to audit, and it means the final step cannot tell the
+     * difference, so nothing downstream needs a branch of its own.
+     */
+    private Challenge skipVerification(EmailVerificationEntity verification, String hint) {
+        String token = VerificationCodes.newToken();
+        verification.consume(token);
+        verifications.save(verification);
+
+        log.info(
+                "Contact verification is switched off; registration {} may be completed"
+                        + " without a code",
+                verification.id());
+
+        return new Challenge(verification.id().toString(), 6, 30, hint, token);
+    }
 
     /** The outcome of a completed registration. */
     public record Submitted(String reference, String message) {}
@@ -199,6 +238,10 @@ public class RegistrationService {
                         mailSettings.codeValidity());
         verifications.save(verification);
 
+        if (!registrationSettings.verifyContact()) {
+            return skipVerification(verification, maskEmail(email));
+        }
+
         /*
          * The code is passed straight to the mailer and never logged, never returned and
          * never held beyond this method. The only copies are the hash in the database and
@@ -212,7 +255,7 @@ public class RegistrationService {
 
         log.info("Issued a verification code for a registration (id={})", verification.id());
 
-        return new Challenge(verification.id().toString(), 6, 30, maskEmail(email));
+        return new Challenge(verification.id().toString(), 6, 30, maskEmail(email), null);
     }
 
     /* --------------------------------------------------------- start business */
@@ -249,6 +292,10 @@ public class RegistrationService {
                         mailSettings.codeValidity());
         verifications.save(verification);
 
+        if (!registrationSettings.verifyContact()) {
+            return skipVerification(verification, maskEmail(email));
+        }
+
         mailer.send(
                 OutboxKind.EMAIL_VERIFICATION,
                 email,
@@ -264,7 +311,7 @@ public class RegistrationService {
          */
         log.info("Issued a verification code for a business registration (id={})", verification.id());
 
-        return new Challenge(verification.id().toString(), 6, 30, maskEmail(email));
+        return new Challenge(verification.id().toString(), 6, 30, maskEmail(email), null);
     }
 
     /* ----------------------------------------------------------------- verify */
