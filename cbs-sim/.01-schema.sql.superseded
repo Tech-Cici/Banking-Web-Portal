@@ -1,0 +1,124 @@
+/*
+ * A SIMULATED CORE BANKING SYSTEM, on Microsoft SQL Server.
+ *
+ * WHAT THIS IS NOT: it is not the Internet Banking Portal's database. The portal runs on
+ * PostgreSQL -- 25 Flyway migrations, Neon in production -- and nothing here is read by
+ * it. This stands in for the system the bank keeps its account book in, so the portal can
+ * be developed and demonstrated against something shaped like a CBS.
+ *
+ * NO REAL CUSTOMER DATA GOES IN HERE. The rows below are invented. Real names, national
+ * IDs and balances on a laptop, in a container with no encryption at rest, is a
+ * data-protection problem whatever the intent -- and invented data demonstrates exactly
+ * the same thing.
+ *
+ * Run it:
+ *     docker start zigama-cbs
+ *     docker exec -i zigama-cbs /opt/mssql-tools18/bin/sqlcmd \
+ *         -S localhost -U sa -C -i /dev/stdin < cbs-sim/01-schema.sql
+ *
+ * or paste it into VS Code with the SQL Server (mssql) extension connected to
+ * localhost,1433. It drops and recreates the database, so it is safe to re-run.
+ */
+
+IF DB_ID('ZigamaCbs') IS NOT NULL
+BEGIN
+    ALTER DATABASE ZigamaCbs SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE ZigamaCbs;
+END
+GO
+
+CREATE DATABASE ZigamaCbs;
+GO
+
+USE ZigamaCbs;
+GO
+
+CREATE TABLE customers (
+    customer_id     INT IDENTITY(1,1) PRIMARY KEY,
+    national_id     VARCHAR(16)   NOT NULL UNIQUE,
+    full_name       NVARCHAR(120) NOT NULL,
+    phone           VARCHAR(20)   NOT NULL,
+    branch          NVARCHAR(60)  NOT NULL,
+    opened_on       DATE          NOT NULL DEFAULT (CAST(GETDATE() AS DATE))
+);
+GO
+
+CREATE TABLE accounts (
+    account_id      INT IDENTITY(1,1) PRIMARY KEY,
+    account_number  VARCHAR(16)   NOT NULL UNIQUE,
+    customer_id     INT           NOT NULL REFERENCES customers(customer_id),
+    product         VARCHAR(20)   NOT NULL,
+    currency        CHAR(3)       NOT NULL,
+    /*
+     * DECIMAL, never FLOAT and never MONEY.
+     *
+     * FLOAT cannot hold a balance exactly -- it is the same binary floating point the
+     * portal forbids on the JavaScript side, and it is no more acceptable here. MONEY is
+     * a fixed four-decimal type that rounds in ways that surprise people the moment
+     * anything is divided. DECIMAL(19,4) holds every currency this bank touches, RWF
+     * included, which simply carries .0000.
+     */
+    balance         DECIMAL(19,4) NOT NULL DEFAULT 0,
+    status          VARCHAR(12)   NOT NULL DEFAULT 'ACTIVE',
+    CONSTRAINT accounts_status_known CHECK (status IN ('ACTIVE','DORMANT','FROZEN','CLOSED')),
+    CONSTRAINT accounts_currency_shape CHECK (currency LIKE '[A-Z][A-Z][A-Z]')
+);
+GO
+
+CREATE TABLE transactions (
+    txn_id          BIGINT IDENTITY(1,1) PRIMARY KEY,
+    account_id      INT           NOT NULL REFERENCES accounts(account_id),
+    posted_at       DATETIME2     NOT NULL DEFAULT SYSUTCDATETIME(),
+    direction       CHAR(2)       NOT NULL,
+    amount          DECIMAL(19,4) NOT NULL,
+    narrative       NVARCHAR(140) NOT NULL,
+    /*
+     * The balance AFTER this entry, as the CBS recorded it. Real core banking systems
+     * store this rather than recomputing it: a statement line has to show what the
+     * balance was at the time, and a sum over history gives today's figure, not that
+     * one.
+     */
+    running_balance DECIMAL(19,4) NOT NULL,
+    CONSTRAINT txn_direction_known CHECK (direction IN ('DR','CR')),
+    CONSTRAINT txn_amount_positive CHECK (amount > 0)
+);
+GO
+
+CREATE INDEX txn_account_idx ON transactions (account_id, posted_at DESC);
+GO
+
+/* ------------------------------------------------------------------ invented data */
+
+INSERT INTO customers (national_id, full_name, phone, branch) VALUES
+    ('1199080012345678', N'Uwimana Jean Claude', '+250788100001', N'Nyarugenge'),
+    ('1198570098765432', N'Mukamana Alice',      '+250788100002', N'Kicukiro'),
+    ('1200180055554444', N'Habimana Eric',       '+250788100003', N'Musanze'),
+    ('1197340011112222', N'Nyirahabimana Grace', '+250788100004', N'Huye');
+GO
+
+INSERT INTO accounts (account_number, customer_id, product, currency, balance, status) VALUES
+    ('4000100000001', 1, 'SAVINGS', 'RWF', 1250000.0000, 'ACTIVE'),
+    ('4000100000002', 1, 'CURRENT', 'RWF',  340500.0000, 'ACTIVE'),
+    ('4000100000003', 2, 'SAVINGS', 'RWF',   87000.0000, 'ACTIVE'),
+    ('4000100000004', 3, 'CURRENT', 'USD',    2150.0000, 'ACTIVE'),
+    ('4000100000005', 4, 'SAVINGS', 'RWF',       0.0000, 'DORMANT');
+GO
+
+INSERT INTO transactions (account_id, posted_at, direction, amount, narrative, running_balance) VALUES
+    (1, '2026-09-28T08:14:00', 'CR', 1500000.0000, N'Salary - September',        1500000.0000),
+    (1, '2026-10-01T10:02:00', 'DR',  150000.0000, N'Transfer to 4000100000002', 1350000.0000),
+    (1, '2026-10-04T16:45:00', 'DR',  100000.0000, N'ATM withdrawal Nyabugogo',  1250000.0000),
+    (2, '2026-10-01T10:02:00', 'CR',  150000.0000, N'Transfer from 4000100000001', 190500.0000),
+    (2, '2026-10-06T09:30:00', 'CR',  150000.0000, N'Cash deposit',                340500.0000),
+    (3, '2026-09-30T11:00:00', 'CR',   87000.0000, N'Opening deposit',              87000.0000),
+    (4, '2026-10-02T14:20:00', 'CR',    2150.0000, N'Inward remittance',             2150.0000);
+GO
+
+/* Does the stored balance agree with the last entry? Anything listed here is a bug. */
+SELECT a.account_number, a.balance AS account_balance, t.running_balance AS last_entry
+FROM accounts a
+JOIN transactions t ON t.txn_id = (
+        SELECT TOP 1 txn_id FROM transactions
+        WHERE account_id = a.account_id ORDER BY posted_at DESC, txn_id DESC)
+WHERE a.balance <> t.running_balance;
+GO
